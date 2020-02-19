@@ -172,14 +172,14 @@ class VelField(Fittable2DModel):
     incl = Parameter(default=45)
     phi = Parameter(default=0)
     vmax = Parameter(default=100)
-    r_d = Parameter(default=1)
+    r_eff = Parameter(default=1)
     x0 = Parameter(default=0)
     y0 = Parameter(default=0)
     v0 = Parameter(default=0)
 
 
     @classmethod
-    def evaluate(cls, x, y, incl, phi, vmax, r_d, x0, y0, v0):
+    def evaluate(cls, x, y, incl, phi, vmax, r_eff, x0, y0, v0):
         """
         TODO: Be consistent with Sersic2D
         (x,y) kartesian sky coordinates,
@@ -195,6 +195,7 @@ class VelField(Fittable2DModel):
         if isinstance(phi, u.Quantity) is False:
             phi = phi * u.deg
 
+        r_d = r_eff  # For now for n=1  r_eff = 1.678 * r_d
         phi = phi.to(u.rad)
         incl = incl.to(u.rad)
         r = ((x - x0) ** 2 + (y - y0) ** 2) ** 0.5
@@ -228,4 +229,106 @@ class VelField(Fittable2DModel):
 
 
 
-#------ copied from astromodels
+#------  End -----
+
+class SigmaField(Fittable2DModel):
+
+    r"""
+        Two dimensional Velocity Dispersion
+        At the moment just a gaussian distribution TODO: Investigate the possible distributions
+
+        Parameters
+        ----------
+
+        incl : float, u.Quantity
+            Inclination inclination between the normal to the galaxy plane and the line-of-sight,
+
+        phi : float, u.Quantity
+            Position angle of the major axis wrt to north (=up) measured counterclockwise,
+        sigma : float, u.Quantity
+            velocity dispersion
+
+        r_d : float
+            scale length of galaxy (assumed to be turnover radius) it will be used as sigma
+
+        x0 : float, optional
+            x position of the center.
+        y0 : float, optional
+            y position of the center.
+        """
+    incl = Parameter(default=45)
+    phi = Parameter(default=0)
+    sigma = Parameter(default=100)
+    r_eff = Parameter(default=1)
+    x_0 = Parameter(default=0)
+    y_0 = Parameter(default=0)
+
+
+    @classmethod
+    def evaluate(cls, x, y, incl, phi, sigma, r_eff, x_0, y_0):
+        """
+        TODO: Be consistent with Sersic2D
+        (x,y) kartesian sky coordinates,
+        (x0,y0) kartesian sky coordiantes of rotation centre of galaxy,
+        V0 velocity of centre wrt observer,
+        incl inclination angle between the normal to the galaxy plane and the line-of-sight,
+        phi position angle of the major axis wrt to north (=up) measured counterclockwise,
+        Vmax constant rotation for R>>rd,
+        rd scale length of galaxy (assumed to be turnover radius)
+        """
+        if isinstance(incl, u.Quantity) is False:
+            incl = incl * u.deg
+        if isinstance(phi, u.Quantity) is False:
+            phi = phi * u.deg
+
+        """Two dimensional Gaussian function"""
+
+        ellip = incl
+        theta = phi
+        x_mean = x_0
+        y_mean = y_0
+        a, b = r_eff, (1 - ellip) * r_eff
+        cos_theta, sin_theta = np.cos(theta), np.sin(theta)
+        x_maj = (x - x_0) * cos_theta + (y - y_0) * sin_theta
+        x_min = -(x - x_0) * sin_theta + (y - y_0) * cos_theta
+        z = np.sqrt((x_maj / a) ** 2 + (x_min / b) ** 2)
+
+        x_stddev = x_maj
+        y_stddev = x_min
+
+        cost2 = np.cos(theta) ** 2
+        sint2 = np.sin(theta) ** 2
+        sin2t = np.sin(2. * theta)
+        xstd2 = x_stddev ** 2
+        ystd2 = y_stddev ** 2
+        xdiff = x - x_mean
+        ydiff = y - y_mean
+        a = 0.5 * ((cost2 / xstd2) + (sint2 / ystd2))
+        b = 0.5 * ((sin2t / xstd2) - (sin2t / ystd2))
+        c = 0.5 * ((sint2 / xstd2) + (cost2 / ystd2))
+        return sigma * np.exp(-((a * xdiff ** 2) + (b * xdiff * ydiff) +
+                                (c * ydiff ** 2)))
+
+
+    @property
+    def input_units(self):
+        if self.x0.unit is None:
+            return None
+        else:
+            return {'x': self.x0.unit,
+                    'y': self.y0.unit}
+
+    def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
+        # Note that here we need to make sure that x and y are in the same
+        # units otherwise this can lead to issues since rotation is not well
+        # defined.
+        if inputs_unit['x'] != inputs_unit['y']:
+            raise UnitsError("Units of 'x' and 'y' inputs should match")
+        return {'x0': inputs_unit['x'],
+                'y0': inputs_unit['x'],
+                'r_d': inputs_unit['x'],
+                'phi': u.deg,
+                'vrot': outputs_unit['z']}
+
+
+
