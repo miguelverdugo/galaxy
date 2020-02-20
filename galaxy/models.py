@@ -153,8 +153,8 @@ class VelField(Fittable2DModel):
         Parameters
         ----------
 
-        incl : float, u.Quantity
-            Inclination inclination between the normal to the galaxy plane and the line-of-sight,
+        ellip : float, u.Quantity
+            Ellipticity on the sky
 
         phi : float, u.Quantity
             Position angle of the major axis wrt to north (=up) measured counterclockwise,
@@ -168,43 +168,43 @@ class VelField(Fittable2DModel):
             x position of the center.
         y0 : float, optional
             y position of the center.
+
+        q : float, optional
+            Disk thickness
         """
-    incl = Parameter(default=45)
-    phi = Parameter(default=0)
     vmax = Parameter(default=100)
     r_eff = Parameter(default=1)
+
+    incl = Parameter(default=45)
+    phi = Parameter(default=0)
+
     x0 = Parameter(default=0)
     y0 = Parameter(default=0)
-    v0 = Parameter(default=0)
 
+    q = Parameter(default=0.2)
 
-    @classmethod
-    def evaluate(cls, x, y, incl, phi, vmax, r_eff, x0, y0, v0):
+    @staticmethod
+    def evaluate(x, y, ellip, theta, vmax, r_eff, x0, y0, q):
         """
+        Two dimensional velocity field, arctan approximation
         TODO: Be consistent with Sersic2D
-        (x,y) kartesian sky coordinates,
-        (x0,y0) kartesian sky coordiantes of rotation centre of galaxy,
-        V0 velocity of centre wrt observer,
-        incl inclination angle between the normal to the galaxy plane and the line-of-sight,
-        phi position angle of the major axis wrt to north (=up) measured counterclockwise,
-        Vmax constant rotation for R>>rd,
-        rd scale length of galaxy (assumed to be turnover radius)
+
         """
-        if isinstance(incl, u.Quantity) is False:
-            incl = incl * u.deg
-        if isinstance(phi, u.Quantity) is False:
-            phi = phi * u.deg
+        if isinstance(theta, u.Quantity) is False:
+            theta = theta * u.deg
 
-        r_d = r_eff  # For now for n=1  r_eff = 1.678 * r_d
-        phi = phi.to(u.rad)
-        incl = incl.to(u.rad)
+        r_d = r_eff  # For now,  for n=1  r_eff = 1.678 * r_d
+        theta = theta.to(u.rad)
+        # get inclination from ellipticity
+        incl = np.arccos(np.sqrt(((1 - ellip) ** 2 - q ** 2) / (1 - q ** 2)))
+
         r = ((x - x0) ** 2 + (y - y0) ** 2) ** 0.5
+
         #   azimuthal angle in the plane of the galaxy = cos(theta) = cost
-        cost = (-(x - x0) * np.sin(phi) + (y - y0) * np.cos(phi)) / (r + 0.00001)
+        cost = (-(x - x0) * np.sin(theta) + (y - y0) * np.cos(theta)) / (r + 0.00001)
+        vrot = vmax*2 / np.pi*np.arctan(r/r_d)         #arctan model
 
-        vrot = vmax*2/np.pi*np.arctan(r/r_d)         #arctan model
-
-        return v0 + vrot * np.sin(incl) * cost
+        return vrot * np.sin(incl) * cost
 
     @property
     def input_units(self):
@@ -222,20 +222,19 @@ class VelField(Fittable2DModel):
             raise UnitsError("Units of 'x' and 'y' inputs should match")
         return {'x0': inputs_unit['x'],
                 'y0': inputs_unit['x'],
-                'r_d': inputs_unit['x'],
+                'r_eff': inputs_unit['x'],
                 'phi': u.deg,
+                'incl': u.deg
                 'vrot': outputs_unit['z']}
-
-
-
 
 #------  End -----
 
-class SigmaField(Fittable2DModel):
+class DispersionField(Fittable2DModel):
 
     r"""
         Two dimensional Velocity Dispersion
-        At the moment just a gaussian distribution TODO: Investigate the possible distributions
+        At the moment just a gaussian distribution
+        TODO: Investigate the possible real distributions
 
         Parameters
         ----------
@@ -257,36 +256,31 @@ class SigmaField(Fittable2DModel):
             y position of the center.
         """
     incl = Parameter(default=45)
-    phi = Parameter(default=0)
+    theta = Parameter(default=0)
     sigma = Parameter(default=100)
     r_eff = Parameter(default=1)
     x_0 = Parameter(default=0)
     y_0 = Parameter(default=0)
+    q = Parameter(default=0.2)
 
-
-    @classmethod
-    def evaluate(cls, x, y, incl, phi, sigma, r_eff, x_0, y_0):
+    @staticmethod
+    def evaluate(x, y, incl, theta, sigma, r_eff, x_0, y_0, q):
         """
         TODO: Be consistent with Sersic2D
-        (x,y) kartesian sky coordinates,
-        (x0,y0) kartesian sky coordiantes of rotation centre of galaxy,
-        V0 velocity of centre wrt observer,
-        incl inclination angle between the normal to the galaxy plane and the line-of-sight,
-        phi position angle of the major axis wrt to north (=up) measured counterclockwise,
-        Vmax constant rotation for R>>rd,
-        rd scale length of galaxy (assumed to be turnover radius)
+
         """
         if isinstance(incl, u.Quantity) is False:
             incl = incl * u.deg
-        if isinstance(phi, u.Quantity) is False:
-            phi = phi * u.deg
+        if isinstance(theta, u.Quantity) is False:
+            theta = theta * u.deg
 
         """Two dimensional Gaussian function"""
+        theta = theta.to(u.rad)
+        incl = incl.to(u.rad)
 
-        ellip = incl
-        theta = phi
-        x_mean = x_0
-        y_mean = y_0
+        # get ellipticity from inclination
+        ellip = 1 - np.sqrt((1 - q ** 2) * np.cos(incl) ** 2 + q ** 2)
+
         a, b = r_eff, (1 - ellip) * r_eff
         cos_theta, sin_theta = np.cos(theta), np.sin(theta)
         x_maj = (x - x_0) * cos_theta + (y - y_0) * sin_theta
@@ -301,8 +295,8 @@ class SigmaField(Fittable2DModel):
         sin2t = np.sin(2. * theta)
         xstd2 = x_stddev ** 2
         ystd2 = y_stddev ** 2
-        xdiff = x - x_mean
-        ydiff = y - y_mean
+        xdiff = x - x_0
+        ydiff = y - y_0
         a = 0.5 * ((cost2 / xstd2) + (sint2 / ystd2))
         b = 0.5 * ((sin2t / xstd2) - (sin2t / ystd2))
         c = 0.5 * ((sint2 / xstd2) + (cost2 / ystd2))
@@ -326,9 +320,10 @@ class SigmaField(Fittable2DModel):
             raise UnitsError("Units of 'x' and 'y' inputs should match")
         return {'x0': inputs_unit['x'],
                 'y0': inputs_unit['x'],
-                'r_d': inputs_unit['x'],
+                'r_eff': inputs_unit['x'],
                 'phi': u.deg,
-                'vrot': outputs_unit['z']}
+                'incl': u.deg,
+                'sigma': outputs_unit['z']}
 
 
 
