@@ -156,12 +156,12 @@ class VelField(Fittable2DModel):
         ellip : float, u.Quantity
             Ellipticity on the sky
 
-        phi : float, u.Quantity
+        theta : float, u.Quantity
             Position angle of the major axis wrt to north (=up) measured counterclockwise,
         vmax : float, u.Quantity
             Constant rotation velocity for R>>rd,
 
-        r_d : float
+        r_eff : float
             scale length of galaxy (assumed to be turnover radius)
 
         x0 : float, optional
@@ -175,16 +175,16 @@ class VelField(Fittable2DModel):
     vmax = Parameter(default=100)
     r_eff = Parameter(default=1)
 
-    incl = Parameter(default=45)
-    phi = Parameter(default=0)
+    ellip = Parameter(default=0)
+    theta = Parameter(default=0)
 
-    x0 = Parameter(default=0)
-    y0 = Parameter(default=0)
+    x_0 = Parameter(default=0)
+    y_0 = Parameter(default=0)
 
     q = Parameter(default=0.2)
 
     @staticmethod
-    def evaluate(x, y, ellip, theta, vmax, r_eff, x0, y0, q):
+    def evaluate(x, y, vmax, r_eff,  ellip, theta, x_0, y_0, q):
         """
         Two dimensional velocity field, arctan approximation
         TODO: Be consistent with Sersic2D
@@ -198,21 +198,21 @@ class VelField(Fittable2DModel):
         # get inclination from ellipticity
         incl = np.arccos(np.sqrt(((1 - ellip) ** 2 - q ** 2) / (1 - q ** 2)))
 
-        r = ((x - x0) ** 2 + (y - y0) ** 2) ** 0.5
+        r = ((x - x_0) ** 2 + (y - y_0) ** 2) ** 0.5
 
         #   azimuthal angle in the plane of the galaxy = cos(theta) = cost
-        cost = (-(x - x0) * np.sin(theta) + (y - y0) * np.cos(theta)) / (r + 0.00001)
+        cost = (-(x - x_0) * np.sin(theta) + (y - y_0) * np.cos(theta)) / (r + 0.00001)
         vrot = vmax*2 / np.pi*np.arctan(r/r_d)         #arctan model
 
         return vrot * np.sin(incl) * cost
 
     @property
     def input_units(self):
-        if self.x0.unit is None:
+        if self.x_0.unit is None:
             return None
         else:
-            return {'x': self.x0.unit,
-                    'y': self.y0.unit}
+            return {'x': self.x_0.unit,
+                    'y': self.y_0.unit}
 
     def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
         # Note that here we need to make sure that x and y are in the same
@@ -220,11 +220,10 @@ class VelField(Fittable2DModel):
         # defined.
         if inputs_unit['x'] != inputs_unit['y']:
             raise UnitsError("Units of 'x' and 'y' inputs should match")
-        return {'x0': inputs_unit['x'],
-                'y0': inputs_unit['x'],
+        return {'x_0': inputs_unit['x'],
+                'y_0': inputs_unit['x'],
                 'r_eff': inputs_unit['x'],
                 'phi': u.deg,
-                'incl': u.deg
                 'vrot': outputs_unit['z']}
 
 #------  End -----
@@ -255,7 +254,8 @@ class DispersionField(Fittable2DModel):
         y0 : float, optional
             y position of the center.
         """
-    incl = Parameter(default=45)
+   # incl = Parameter(default=45)
+    ellip = Parameter(default=0)
     theta = Parameter(default=0)
     sigma = Parameter(default=100)
     r_eff = Parameter(default=1)
@@ -264,53 +264,54 @@ class DispersionField(Fittable2DModel):
     q = Parameter(default=0.2)
 
     @staticmethod
-    def evaluate(x, y, incl, theta, sigma, r_eff, x_0, y_0, q):
+    def evaluate(x, y, ellip, theta, sigma, r_eff, x_0, y_0, q):
         """
         TODO: Be consistent with Sersic2D
 
         """
-        if isinstance(incl, u.Quantity) is False:
-            incl = incl * u.deg
+     #   if isinstance(incl, u.Quantity) is False:
+     #       incl = incl * u.deg
         if isinstance(theta, u.Quantity) is False:
             theta = theta * u.deg
 
         """Two dimensional Gaussian function"""
         theta = theta.to(u.rad)
-        incl = incl.to(u.rad)
+    #    incl = incl.to(u.rad)
 
         # get ellipticity from inclination
-        ellip = 1 - np.sqrt((1 - q ** 2) * np.cos(incl) ** 2 + q ** 2)
+       # ellip = 1 - np.sqrt((1 - q ** 2) * np.cos(incl) ** 2 + q ** 2)
 
         a, b = r_eff, (1 - ellip) * r_eff
         cos_theta, sin_theta = np.cos(theta), np.sin(theta)
         x_maj = (x - x_0) * cos_theta + (y - y_0) * sin_theta
         x_min = -(x - x_0) * sin_theta + (y - y_0) * cos_theta
         z = np.sqrt((x_maj / a) ** 2 + (x_min / b) ** 2)
+        result = sigma * np.exp(-z**2)
+        return result
 
-        x_stddev = x_maj
-        y_stddev = x_min
+        #  x_stddev = x_maj
+        #  y_stddev = x_min
+        #  cost2 = np.cos(theta) ** 2
+        #  sint2 = np.sin(theta) ** 2
+        #  sin2t = np.sin(2. * theta)
+        #  xstd2 = x_stddev ** 2
+        #  ystd2 = y_stddev ** 2
+        #   xdiff = x - x_0
+        #   ydiff = y - y_0
+        #   a = 0.5 * ((cost2 / xstd2) + (sint2 / ystd2))
+        #   b = 0.5 * ((sin2t / xstd2) - (sin2t / ystd2))
+        #   c = 0.5 * ((sint2 / xstd2) + (cost2 / ystd2))
 
-        cost2 = np.cos(theta) ** 2
-        sint2 = np.sin(theta) ** 2
-        sin2t = np.sin(2. * theta)
-        xstd2 = x_stddev ** 2
-        ystd2 = y_stddev ** 2
-        xdiff = x - x_0
-        ydiff = y - y_0
-        a = 0.5 * ((cost2 / xstd2) + (sint2 / ystd2))
-        b = 0.5 * ((sin2t / xstd2) - (sin2t / ystd2))
-        c = 0.5 * ((sint2 / xstd2) + (cost2 / ystd2))
-        return sigma * np.exp(-((a * xdiff ** 2) + (b * xdiff * ydiff) +
-                                (c * ydiff ** 2)))
+        #  return sigma * np.exp(-((a * xdiff ** 2) + (b * xdiff * ydiff) + (c * ydiff ** 2)))
 
 
     @property
     def input_units(self):
-        if self.x0.unit is None:
+        if self.x_0.unit is None:
             return None
         else:
-            return {'x': self.x0.unit,
-                    'y': self.y0.unit}
+            return {'x': self.x_0.unit,
+                    'y': self.y_0.unit}
 
     def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
         # Note that here we need to make sure that x and y are in the same
@@ -318,11 +319,10 @@ class DispersionField(Fittable2DModel):
         # defined.
         if inputs_unit['x'] != inputs_unit['y']:
             raise UnitsError("Units of 'x' and 'y' inputs should match")
-        return {'x0': inputs_unit['x'],
-                'y0': inputs_unit['x'],
+        return {'x_0': inputs_unit['x'],
+                'y_0': inputs_unit['x'],
                 'r_eff': inputs_unit['x'],
                 'phi': u.deg,
-                'incl': u.deg,
                 'sigma': outputs_unit['z']}
 
 
