@@ -261,10 +261,10 @@ class DispersionField(Fittable2DModel):
     r_eff = Parameter(default=1)
     x_0 = Parameter(default=0)
     y_0 = Parameter(default=0)
-    q = Parameter(default=0.2)
+
 
     @staticmethod
-    def evaluate(x, y, ellip, theta, sigma, r_eff, x_0, y_0, q):
+    def evaluate(x, y, ellip, theta, sigma, r_eff, x_0, y_0sigm):
         """
         TODO: Be consistent with Sersic2D
 
@@ -324,6 +324,19 @@ class DispersionField(Fittable2DModel):
                 'r_eff': inputs_unit['x'],
                 'phi': u.deg,
                 'sigma': outputs_unit['z']}
+
+
+class Galaxy:
+
+    def __init__(self, amplitude, r_eff, n, x_0, y_0, ellip, theta, vmax, q, sigma):
+
+        self.flux = Sersic2D(amplitude=amplitude, r_eff=r_eff, n=n,
+                             x_0=x_0, y_0=y_0, ellip=ellip, theta=theta)
+        self.velocity = VelField(vmax=vmax, q=q, r_eff=r_eff,
+                                 x_0=x_0, y_0=y_0, ellip=ellip, theta=theta)
+        self.dispersion = DispersionField(sigma=sigma, r_eff=r_eff,
+                                          x_0=x_0, y_0=y_0, ellip=ellip, theta=theta)
+
 
 
 
