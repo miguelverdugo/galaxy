@@ -326,16 +326,54 @@ class DispersionField(Fittable2DModel):
                 'sigma': outputs_unit['z']}
 
 
-class Galaxy:
+class GalaxyBase:
 
-    def __init__(self, amplitude, r_eff, n, x_0, y_0, ellip, theta, vmax, q, sigma):
+    def __init__(self, x_0, y_0, amplitude, r_eff, ellip, theta, n=4, vmax=0, sigma=0, q=0.2):
 
-        self.flux = Sersic2D(amplitude=amplitude, r_eff=r_eff, n=n,
-                             x_0=x_0, y_0=y_0, ellip=ellip, theta=theta)
-        self.velocity = VelField(vmax=vmax, q=q, r_eff=r_eff,
-                                 x_0=x_0, y_0=y_0, ellip=ellip, theta=theta)
-        self.dispersion = DispersionField(sigma=sigma, r_eff=r_eff,
-                                          x_0=x_0, y_0=y_0, ellip=ellip, theta=theta)
+        self.amplitude = amplitude
+        self.r_eff = r_eff
+        self.x_0 = x_0
+        self.y_0 = y_0
+        self.ellip = ellip
+        self.theta = theta
+        self.n = n
+        self.vmax = vmax
+        self.sigma = sigma
+        self.q = q
+
+    @property
+    def flux(self):
+        mod = Sersic2D(x_0=self.x_0,
+                       y_0=self.y_0,
+                       amplitude=self.amplitude,
+                       r_eff=self.r_eff,
+                       n=self.n,
+                       ellip=self.ellip,
+                       theta=self.theta)
+        return mod
+
+    @property
+    def velfield(self):
+        mod = VelField(x_0=self.x_0,
+                       y_0=self.y_0,
+                       r_eff=self.r_eff,
+                       ellip=self.ellip,
+                       theta=self.theta,
+                       vmax=self.vmax,
+                       q=self.q)
+        return mod
+
+    @property
+    def dispfield(self):
+        mod = DispersionField(x_0=self.x_0,
+                              y_0=self.y_0,
+                              r_eff=self.r_eff,
+                              ellip=self.ellip,
+                              theta=self.theta,
+                              sigma=self.sigma,
+                              q=self.q)
+        return mod
+
 
 
 
