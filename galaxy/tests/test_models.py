@@ -1,9 +1,10 @@
 
 from galaxy.models import Sersic2D, VelField, DispersionField
+from galaxy import galaxysource
 import numpy as np
 import matplotlib.pyplot as plt
 import pytest
-
+from scopesim.source.source_templates import Source
 
 PLOTS = True
 
@@ -82,3 +83,27 @@ class TestDispField:
             cbar.set_label('Dispersion', rotation=270, labelpad=25)
            # cbar.set_ticks([-1, 0, 1, 2], update_ticks=True)
             plt.show()
+
+
+class TestGalaxy1D:
+
+    def test_galaxy_creation(self):
+
+        gal = galaxysource(sed="kc96/s0", z=0)
+        assert isinstance(gal, Source)
+
+    def test_plot_galaxy(self, plot=PLOTS):
+        gal = galaxysource(sed="kc96/s0", z=0)
+        data = gal.fields[0].data
+        print(data)
+        if plot is True:
+            plt.imshow(np.log10(data), origin='lower', interpolation='nearest')
+            plt.show()
+
+
+
+
+
+
+
+

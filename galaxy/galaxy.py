@@ -1,6 +1,7 @@
 
 import numpy as np
 from astropy.io import fits
+import astropy.units as u
 
 from spextra import Spextrum
 
@@ -10,18 +11,16 @@ from .models import GalaxyBase
 
 
 def galaxysource(sed,           # The SED of the galaxy
-                 z,             # redshift
-                 mag,           # magnitude
-                 filter,        # passband
-                 plate_scale,   # the plate scale "/pix
-                 spec_scale,    # the spectral scale A/pix (or another unit)
-                 r_eff,         # effective radius
-                 n,             # sersic index
-                 ellip,         # ellipticity
-                 theta,         # position angle
-                 extend,        # extend in units of r_eff
-                 vmax=0,        # maximum velocity
-                 sigma=0):      # velocity dispersion
+                 z=0,             # redshift
+                 mag=15,           # magnitude
+                 filter_name="g",        # passband
+                 plate_scale=0.1,   # the plate scale "/pix
+                 r_eff=25,         # effective radius
+                 n=4,             # sersic index
+                 ellip=0.1,         # ellipticity
+                 theta=0,         # position angle
+                 extend=2):        # extend in units of r_eff
+
     """
     Galaxy is created always at (x,y)=(0,0) so we don't need to create a huge image containing
     the whole FoV
@@ -42,27 +41,54 @@ def galaxysource(sed,           # The SED of the galaxy
     -------
 
     """
-    image_size = (r_eff * extend / plate_scale)   # TODO: Needs unit check
-    x_0 = int(image_size/2)
-    y_0 = int(image_size/2)
-    x, y = np.grid(np.arange(int(image_size), int(image_size)))
-    galaxy = GalaxyBase(x_0=x_0,
-                        y_0=y_0,
-                        r_eff=r_eff,
-                        n=n,
-                        ellip=ellip,
-                        theta=theta,
-                        vmax=vmax,
-                        sigma=sigma)
+    if isinstance(mag, u.Quantity) is False:
+        mag = mag * u.ABmag
+    if isinstance(plate_scale, u.Quantity) is False:
+        plate_scale = plate_scale * u.arcsec
+    if isinstance(r_eff, u.Quantity) is False:
+        r_eff = r_eff * u.arcsec
 
-    sp = Spextrum(sed).redshift(z)
+    sp = Spextrum(sed).redshift(z=z)
+    scaled_sp = sp.scale_to_magnitude(amplitude=mag, filter_name=filter_name)
+
+    r_eff = r_eff.to(u.arcsec)
+    plate_scale = plate_scale.to(u.arcsec)
+
+    image_size = 2 * (r_eff.value * extend / plate_scale.value)  # TODO: Needs unit check
+    x_0 = image_size // 2
+    y_0 = image_size // 2
+    print(image_size, "*"*15)
+    x, y = np.meshgrid(np.arange(image_size),
+                       np.arange(image_size))
+
+    galaxy = GalaxyBase(x_0=x_0, y_0=y_0,
+                        r_eff=r_eff.value, amplitude=1,  n=n,
+                        ellip=ellip, theta=theta)
+
+    img = galaxy.flux(x, y)
+
+    w, h = img.shape
+    header = fits.Header({"CRPIX1": w // 2,
+                          "CRPIX2": h // 2,
+                          "CRVAL1": 0,
+                          "CRVAL2": 0,
+                          "CDELT1": plate_scale.to(u.deg).value,
+                          "CDELT2": plate_scale.to(u.deg).value,
+                          "CUNIT1": "DEG",
+                          "CUNIT2": "DEG"})
+
+    hdu = fits.PrimaryHDU(data=img, header=header)
+
     src = Source()
-
-    if (vmax == 0) and (sigma == 0):  # imaging case
-        img = galaxy.flux(x, y)
-        scaled_sp = sp.scale_to_magnitude(amplitude=mag, filter_name=filter)
-
-        src.fields  = img
-        src.spectra = scaled_sp
+    src.spectra = [scaled_sp]
+    src.fields = [hdu]
 
     return src
+
+
+
+
+
+def galaxysource3d():
+    pass
+

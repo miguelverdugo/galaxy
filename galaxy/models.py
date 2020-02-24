@@ -264,7 +264,7 @@ class DispersionField(Fittable2DModel):
 
 
     @staticmethod
-    def evaluate(x, y, ellip, theta, sigma, r_eff, x_0, y_0sigm):
+    def evaluate(x, y, ellip, theta, sigma, r_eff, x_0, y_0):
         """
         TODO: Be consistent with Sersic2D
 
@@ -374,6 +374,10 @@ class GalaxyBase:
                               q=self.q)
         return mod
 
+    @classmethod
+    def from_file_moments(cls, filename):
+
+        pass
 
 
 
