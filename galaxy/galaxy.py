@@ -87,6 +87,66 @@ def galaxysource(sed,           # The SED of the galaxy
 
 
 
+def split_moments(ngrid=10,
+                  plate_scale=0.1,  # the plate scale "/pix
+                  r_eff=25,  # effective radius
+                  n=4,  # sersic index
+                  ellip=0.1,  # ellipticity
+                  theta=0,  # position angle
+                  extend=2,
+                  vmax=100,
+                  sigma=100):  # extend in units of r_eff
+    """
+    Returns
+
+    Parameters
+    ----------
+    ngrid
+
+    Returns
+    -------
+
+    A list of ndarrays and velocities and sigmas
+
+    """
+    image_size = 2 * (r_eff * extend / plate_scale)  # TODO: Needs unit check
+    x_0 = image_size // 2
+    y_0 = image_size // 2
+    print(image_size, "*" * 15)
+    x, y = np.meshgrid(np.arange(image_size),
+                       np.arange(image_size))
+
+    galaxy = GalaxyBase(x_0=x_0, y_0=y_0,
+                        r_eff=r_eff/plate_scale, amplitude=1, n=n,
+                        ellip=ellip, theta=theta,
+                        vmax=vmax, sigma=sigma)
+
+    img = galaxy.flux(x, y)
+    vel_field = galaxy.velfield(x, y)
+    sigma_field = galaxy.dispfield(x, y)
+
+    total_field = sigma_field
+
+    total_split = np.linspace(np.min(total_field), np.max(total_field), ngrid+1)
+
+    sigma_split = np.linspace(np.min(sigma_field), np.max(sigma_field), ngrid//2)
+    vel_split = np.linspace(np.min(vel_field), np.max(vel_field), ngrid + 1)
+
+    subfields = []
+    for i in range(ngrid):
+        v1, v2 = vel_split[i], vel_split[i+1]
+        mask = np.ma.masked_where(((vel_field >= v1) & (vel_field < v2)), vel_field).mask
+
+#        subfield = np.ma.masked_array(total_field, np.logical_not(mask))
+        vel_median = np.ma.mean(np.ma.masked_array(vel_field, np.logical_not(mask)))
+        sig_median = np.ma.median(np.ma.masked_array(sigma_field, np.logical_not(mask)))
+        print(vel_median, sig_median)
+        subfields.append(i + 0*np.ma.masked_array(img, np.logical_not(mask)))
+
+
+    return subfields
+
+
 
 
 def galaxysource3d():

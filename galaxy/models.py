@@ -370,8 +370,7 @@ class GalaxyBase:
                               r_eff=self.r_eff,
                               ellip=self.ellip,
                               theta=self.theta,
-                              sigma=self.sigma,
-                              q=self.q)
+                              sigma=self.sigma)
         return mod
 
     @classmethod

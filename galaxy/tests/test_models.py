@@ -1,6 +1,6 @@
 
 from galaxy.models import Sersic2D, VelField, DispersionField
-from galaxy import galaxysource
+from galaxy import galaxysource, split_moments
 import numpy as np
 import matplotlib.pyplot as plt
 import pytest
@@ -63,10 +63,10 @@ class TestVelField:
 class TestDispField:
 
     def test_simple(self, plot=PLOTS):
-        x, y = np.meshgrid(np.arange(100), np.arange(100))
+        x, y = np.meshgrid(np.arange(200), np.arange(200))
 
         sigma = 100
-        mod = DispersionField(sigma=sigma, r_eff=25, x_0=50, y_0=50,
+        mod = DispersionField(sigma=sigma, r_eff=25, x_0=100, y_0=100,
                               ellip=.0, theta=0)
         img = mod(x, y)
 
@@ -99,6 +99,23 @@ class TestGalaxy1D:
         if plot is True:
             plt.imshow(np.log10(data), origin='lower', interpolation='nearest')
             plt.show()
+
+
+
+def test_split(plot=PLOTS):
+    splitted_v = split_moments(ngrid=10)
+   # print(np.unique(splitted_v))
+   # print(np.unique(splitted_v).shape, "*"*15)
+    if plot is True:
+        cmaps = ['Greys', 'terrain', 'gist_stern', 'Greens','autumn', 'winter',
+                 'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd']
+        for img, cmap in zip(splitted_v, cmaps):
+            plt.imshow(img, origin='lower', # cmap=cmap,
+                       interpolation='nearest', vmin=0, vmax=10)
+        cbar = plt.colorbar()
+        cbar.set_label('flux', rotation=270, labelpad=25)
+        plt.show()
+
 
 
 
