@@ -333,8 +333,10 @@ class DispersionField(Fittable2DModel):
 
 class GalaxyBase:
 
-    def __init__(self, x_0, y_0, amplitude, r_eff, ellip, theta, n=4, vmax=0, sigma=0, q=0.2):
+    def __init__(self, x, y, x_0, y_0, amplitude, r_eff, ellip, theta, n=4, vmax=0, sigma=0, q=0.2):
 
+        self.x = x
+        self.y = y
         self.amplitude = amplitude
         self.r_eff = r_eff
         self.x_0 = x_0
@@ -355,7 +357,7 @@ class GalaxyBase:
                        n=self.n,
                        ellip=self.ellip,
                        theta=self.theta)
-        return mod
+        return mod(self.x, self.y)
 
     @property
     def velfield(self):
@@ -366,7 +368,7 @@ class GalaxyBase:
                        theta=self.theta,
                        vmax=self.vmax,
                        q=self.q)
-        return mod
+        return mod(self.x, self.y)
 
     @property
     def dispfield(self):
@@ -376,12 +378,54 @@ class GalaxyBase:
                               ellip=self.ellip,
                               theta=self.theta,
                               sigma=self.sigma)
-        return mod
+        return mod(self.x, self.y)
+
+
+    def regrid(self, ngrid=10):
+        """
+
+        Parameters
+        ----------
+        ngrid: integer
+
+
+        Returns
+        -------
+        A numpy array with sectors numbered
+        """
+        velfield = self.velfield
+        dispfield = self.dispfield
+
+        vel_grid = np.round((ngrid / 2) * velfield / np.max(velfield)) * np.max(velfield)
+        sigma_grid = np.round((ngrid / 2) * dispfield / np.max(dispfield)) * np.max(dispfield)
+        total_field = vel_grid + sigma_grid
+        uniques = np.unique(total_field)
+
+        return total_field
 
     @classmethod
-    def from_file_moments(cls, filename):
+    def from_file_moments(cls, filename, flux_ext=1, vel_ext=None, disp_ext=None):
+        """
+        Read the moments from a fits file and creates a Galaxy object.
+
+
+        Parameters
+        ----------
+        filename
+        flux_ext
+        vel_ext
+        disp_ext
+
+        Returns
+        -------
+
+        """
 
         pass
+
+
+
+
 
 
 

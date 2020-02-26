@@ -1,10 +1,11 @@
 
-from galaxy.models import Sersic2D, VelField, DispersionField
-from galaxy import galaxysource, split_moments
+from galaxy.models import Sersic2D, VelField, DispersionField, GalaxyBase
+from galaxy import galaxysource
 import numpy as np
 import matplotlib.pyplot as plt
 import pytest
 from scopesim.source.source_templates import Source
+
 
 PLOTS = True
 
@@ -102,23 +103,31 @@ class TestGalaxy1D:
 
 
 
-def test_split(plot=PLOTS):
-    splitted_v = split_moments(ngrid=10, ellip=0.6, theta=-55)
-    print("LEVELS:", np.unique(splitted_v), 20*"*")
-    print("N_levels:", np.unique(splitted_v).shape, "*"*15)
-    print("SUM:", np.sum(splitted_v), 15*"*")
-    if plot is True:
-        cmaps = ['Greys', 'terrain', 'gist_stern', 'Greens','autumn', 'winter',
-                 'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd']
-        for img in splitted_v:
-            plt.imshow(img, origin='lower') # cmap=cmap, interpolation='nearest', vmin=0, vmax=10)
-      #  plt.imshow(splitted_v, origin="lower")
-        cbar = plt.colorbar()
-        cbar.set_label('flux', rotation=270, labelpad=25)
+class TestGalaxyBase:
+
+
+    def test_regrid(self):
+        ngrid = 10
+        plate_scale = 0.1  # the plate scale "/pix
+        r_eff = 25  # effective radius
+        n = 4  # sersic index
+        ellip = 0.1  # ellipticity
+        theta = 0  # position angle
+        extend = 2
+        vmax = 100
+        sigma = 100  # extend in units of r_eff
+
+        x, y = np.meshgrid(np.arange(200), np.arange(200))
+        galaxy = GalaxyBase(x, y, x_0=50, y_0=50,
+                            r_eff=r_eff, amplitude = 1, n=n,
+                            ellip=ellip, theta=theta,
+                            vmax=vmax, sigma=sigma)
+
+        grid = galaxy.regrid(ngrid=10)
+
+        print(15*"*", grid.shape)
+        plt.imshow(grid)
         plt.show()
-
-
-
 
 
 
