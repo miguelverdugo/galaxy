@@ -122,26 +122,35 @@ def split_moments(ngrid=10,
                         vmax=vmax, sigma=sigma)
 
     img = galaxy.flux(x, y)
+    img = img/np.sum(img)
     vel_field = galaxy.velfield(x, y)
     sigma_field = galaxy.dispfield(x, y)
 
     total_field = sigma_field
 
     total_split = np.linspace(np.min(total_field), np.max(total_field), ngrid+1)
-
     sigma_split = np.linspace(np.min(sigma_field), np.max(sigma_field), ngrid//2)
+
     vel_split = np.linspace(np.min(vel_field), np.max(vel_field), ngrid + 1)
 
+    vel_grid = np.round((ngrid/2)*vel_field/np.max(vel_field)) * np.max(vel_field)
+    sigma_grid = np.round((ngrid/2)*sigma_field/np.max(sigma_field)) * np.max(sigma_field)
+    total_field = np.round(vel_grid + sigma_grid)
+    uniques = np.unique(total_field)
+
+#    img = np.round((ngrid)*np.log10(img)/np.max(np.log10(img))) * np.max(img)
     subfields = []
-    for i in range(ngrid):
-        v1, v2 = vel_split[i], vel_split[i+1]
-        mask = np.ma.masked_where(((vel_field >= v1) & (vel_field < v2)), vel_field).mask
+    i = 0
+    for value in uniques:
+
+        mask = np.ma.masked_where(total_field ==value, total_field).mask
 
 #        subfield = np.ma.masked_array(total_field, np.logical_not(mask))
         vel_median = np.ma.mean(np.ma.masked_array(vel_field, np.logical_not(mask)))
         sig_median = np.ma.median(np.ma.masked_array(sigma_field, np.logical_not(mask)))
         print(vel_median, sig_median)
         subfields.append(i + 0*np.ma.masked_array(img, np.logical_not(mask)))
+        i = i + 1
 
 
     return subfields

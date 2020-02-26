@@ -104,6 +104,11 @@ class Sersic2D(Fittable2DModel):
     def evaluate(cls, x, y, amplitude, r_eff, n, x_0, y_0, ellip, theta):
         """Two dimensional Sersic profile function."""
 
+        if isinstance(theta, u.Quantity) is False:
+            theta = theta * u.deg
+
+        theta = theta.to(u.rad)
+
         if cls._gammaincinv is None:
             try:
                 from scipy.special import gammaincinv
@@ -114,8 +119,8 @@ class Sersic2D(Fittable2DModel):
         bn = cls._gammaincinv(2. * n, 0.5)
         a, b = r_eff, (1 - ellip) * r_eff
         cos_theta, sin_theta = np.cos(theta), np.sin(theta)
-        x_maj = (x - x_0) * cos_theta + (y - y_0) * sin_theta
-        x_min = -(x - x_0) * sin_theta + (y - y_0) * cos_theta
+        x_maj = (x - x_0) * sin_theta + (y - y_0) * cos_theta
+        x_min = -(x - x_0) * cos_theta + (y - y_0) * sin_theta
         z = np.sqrt((x_maj / a) ** 2 + (x_min / b) ** 2)
 
         return amplitude * np.exp(-bn * (z ** (1 / n) - 1))
@@ -175,7 +180,7 @@ class VelField(Fittable2DModel):
     vmax = Parameter(default=100)
     r_eff = Parameter(default=1)
 
-    ellip = Parameter(default=0)
+    ellip = Parameter(default=0)    # maximum ellipticity 1 - q,  make tests
     theta = Parameter(default=0)
 
     x_0 = Parameter(default=0)
@@ -194,7 +199,7 @@ class VelField(Fittable2DModel):
             theta = theta * u.deg
 
         r_d = r_eff  # For now,  for n=1  r_eff = 1.678 * r_d
-        theta = theta.to(u.rad)
+        theta = (-theta).to(u.rad)
         # get inclination from ellipticity
         incl = np.arccos(np.sqrt(((1 - ellip) ** 2 - q ** 2) / (1 - q ** 2)))
 
@@ -283,8 +288,8 @@ class DispersionField(Fittable2DModel):
 
         a, b = r_eff, (1 - ellip) * r_eff
         cos_theta, sin_theta = np.cos(theta), np.sin(theta)
-        x_maj = (x - x_0) * cos_theta + (y - y_0) * sin_theta
-        x_min = -(x - x_0) * sin_theta + (y - y_0) * cos_theta
+        x_maj = (x - x_0) * sin_theta + (y - y_0) * cos_theta
+        x_min = -(x - x_0) * cos_theta + (y - y_0) * sin_theta
         z = np.sqrt((x_maj / a) ** 2 + (x_min / b) ** 2)
         result = sigma * np.exp(-z**2)
         return result

@@ -103,15 +103,16 @@ class TestGalaxy1D:
 
 
 def test_split(plot=PLOTS):
-    splitted_v = split_moments(ngrid=10)
-   # print(np.unique(splitted_v))
-   # print(np.unique(splitted_v).shape, "*"*15)
+    splitted_v = split_moments(ngrid=10, ellip=0.6, theta=-55)
+    print("LEVELS:", np.unique(splitted_v), 20*"*")
+    print("N_levels:", np.unique(splitted_v).shape, "*"*15)
+    print("SUM:", np.sum(splitted_v), 15*"*")
     if plot is True:
         cmaps = ['Greys', 'terrain', 'gist_stern', 'Greens','autumn', 'winter',
                  'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd']
-        for img, cmap in zip(splitted_v, cmaps):
-            plt.imshow(img, origin='lower', # cmap=cmap,
-                       interpolation='nearest', vmin=0, vmax=10)
+        for img in splitted_v:
+            plt.imshow(img, origin='lower') # cmap=cmap, interpolation='nearest', vmin=0, vmax=10)
+      #  plt.imshow(splitted_v, origin="lower")
         cbar = plt.colorbar()
         cbar.set_label('flux', rotation=270, labelpad=25)
         plt.show()
