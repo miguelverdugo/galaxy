@@ -61,11 +61,11 @@ def galaxysource(sed,           # The SED of the galaxy
     x, y = np.meshgrid(np.arange(image_size),
                        np.arange(image_size))
 
-    galaxy = GalaxyBase(x_0=x_0, y_0=y_0,
+    galaxy = GalaxyBase(x=x, y=y, x_0=x_0, y_0=y_0,
                         r_eff=r_eff.value, amplitude=1,  n=n,
                         ellip=ellip, theta=theta)
 
-    img = galaxy.flux(x, y)
+    img = galaxy.flux
 
     w, h = img.shape
     header = fits.Header({"CRPIX1": w // 2,

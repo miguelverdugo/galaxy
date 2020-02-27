@@ -361,24 +361,35 @@ class GalaxyBase:
 
     @property
     def velfield(self):
-        mod = VelField(x_0=self.x_0,
-                       y_0=self.y_0,
-                       r_eff=self.r_eff,
-                       ellip=self.ellip,
-                       theta=self.theta,
-                       vmax=self.vmax,
-                       q=self.q)
-        return mod(self.x, self.y)
+        if self.vmax > 0:
+            mod = VelField(x_0=self.x_0,
+                           y_0=self.y_0,
+                           r_eff=self.r_eff,
+                           ellip=self.ellip,
+                           theta=self.theta,
+                           vmax=self.vmax,
+                           q=self.q)
+            result = mod(self.x, self.y)
+        else:
+            result =  np.ones(shape=self.x.shape)
+
+        return result
+
 
     @property
     def dispfield(self):
-        mod = DispersionField(x_0=self.x_0,
-                              y_0=self.y_0,
-                              r_eff=self.r_eff,
-                              ellip=self.ellip,
-                              theta=self.theta,
-                              sigma=self.sigma)
-        return mod(self.x, self.y)
+        if self.sigma > 0:
+            mod = DispersionField(x_0=self.x_0,
+                                  y_0=self.y_0,
+                                  r_eff=self.r_eff,
+                                  ellip=self.ellip,
+                                  theta=self.theta,
+                                  sigma=self.sigma)
+            result = mod(self.x, self.y)
+        else:
+            result = np.ones(shape=self.x.shape)
+
+        return result
 
 
     def regrid(self, ngrid=10):
@@ -396,11 +407,11 @@ class GalaxyBase:
         velfield = self.velfield
         dispfield = self.dispfield
 
-        vel_grid = np.round((ngrid / 2) * velfield / np.max(velfield)) * np.max(velfield)
-        sigma_grid = np.round((ngrid / 2) * dispfield / np.max(dispfield)) * np.max(dispfield)
+        vel_grid = np.round((ngrid // 2) * velfield / np.max(velfield)) * np.max(velfield)
+        sigma_grid = np.round((ngrid // 2) * dispfield / np.max(dispfield)) * np.max(dispfield)
         total_field = vel_grid + sigma_grid
         uniques = np.unique(total_field)
-
+        
         return total_field
 
     @classmethod

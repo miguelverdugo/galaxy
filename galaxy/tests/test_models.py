@@ -109,24 +109,27 @@ class TestGalaxyBase:
     def test_regrid(self):
         ngrid = 10
         plate_scale = 0.1  # the plate scale "/pix
-        r_eff = 25  # effective radius
-        n = 4  # sersic index
-        ellip = 0.1  # ellipticity
-        theta = 0  # position angle
+        r_eff = 37  # effective radius
+        n = 1  # sersic index
+        ellip = 0.6  # ellipticity
+        theta = 40  # position angle
         extend = 2
         vmax = 100
         sigma = 100  # extend in units of r_eff
 
         x, y = np.meshgrid(np.arange(200), np.arange(200))
-        galaxy = GalaxyBase(x, y, x_0=50, y_0=50,
+        galaxy = GalaxyBase(x, y, x_0=100, y_0=100,
                             r_eff=r_eff, amplitude = 1, n=n,
                             ellip=ellip, theta=theta,
                             vmax=vmax, sigma=sigma)
 
         grid = galaxy.regrid(ngrid=10)
 
-        print(15*"*", grid.shape)
-        plt.imshow(grid)
+        print("LEVELS:", 15*"*", np.unique(grid))
+        print("N_LEVELS:", 15*"*", np.unique(grid).shape)
+        plt.imshow(grid, origin="lower")
+        cbar = plt.colorbar()
+        cbar.set_label('Dispersion', rotation=270, labelpad=25)
         plt.show()
 
 
