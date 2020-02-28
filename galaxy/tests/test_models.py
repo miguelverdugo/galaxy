@@ -106,14 +106,13 @@ class TestGalaxy1D:
 class TestGalaxyBase:
 
 
-    def test_regrid(self):
-        ngrid = 10
-        plate_scale = 0.1  # the plate scale "/pix
+    def test_rebin(self):
+
         r_eff = 37  # effective radius
         n = 1  # sersic index
         ellip = 0.6  # ellipticity
         theta = 40  # position angle
-        extend = 2
+
         vmax = 100
         sigma = 100  # extend in units of r_eff
 
@@ -123,13 +122,44 @@ class TestGalaxyBase:
                             ellip=ellip, theta=theta,
                             vmax=vmax, sigma=sigma)
 
-        grid = galaxy.regrid(ngrid=10)
+        grid = galaxy.rebin(ngrid=10)
 
         print("LEVELS:", 15*"*", np.unique(grid))
         print("N_LEVELS:", 15*"*", np.unique(grid).shape)
         plt.imshow(grid, origin="lower")
         cbar = plt.colorbar()
         cbar.set_label('Dispersion', rotation=270, labelpad=25)
+        plt.show()
+
+    def test_get_mask(self):
+        r_eff = 37  # effective radius
+        n = 1  # sersic index
+        ellip = 0.6  # ellipticity
+        theta = 40  # position angle
+
+        vmax = 36
+        sigma = 71  # extend in units of r_eff
+
+        x, y = np.meshgrid(np.arange(200), np.arange(200))
+        galaxy = GalaxyBase(x, y, x_0=100, y_0=100,
+                            r_eff=r_eff, amplitude=1, n=n,
+                            ellip=ellip, theta=theta,
+                            vmax=vmax, sigma=sigma)
+
+        masks = galaxy.get_masks(ngrid=100)
+        numbers = np.arange(len(masks))
+        first = masks[0]*0
+
+        for m, n in zip(masks, numbers):
+            print(n)
+            first = first + m * n
+           # plt.imshow(m, origin="lower") #, cmap="tab20")
+           # plt.show()
+
+        plt.imshow(first, origin="lower") #, vmin=0, vmax=4)
+        cbar = plt.colorbar()
+        print(np.min(first), np.max(first))
+
         plt.show()
 
 

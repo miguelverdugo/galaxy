@@ -392,7 +392,7 @@ class GalaxyBase:
         return result
 
 
-    def regrid(self, ngrid=10):
+    def rebin(self, ngrid=10):
         """
 
         Parameters
@@ -411,13 +411,38 @@ class GalaxyBase:
         sigma_grid = np.round((ngrid // 2) * dispfield / np.max(dispfield)) * np.max(dispfield)
         total_field = vel_grid + sigma_grid
         uniques = np.unique(total_field)
-        
+        idx = np.arange(uniques.shape[0])
+
+        for v, i in zip(uniques, idx):
+            total_field[total_field == v] = i+1
+
         return total_field
+
+    def get_masks(self, ngrid=10):
+
+        grid = self.rebin(ngrid=ngrid)
+        uniques = np.unique(grid)
+        masklist = []
+        for value in uniques:
+            mask = np.ma.masked_where(grid == value, grid, copy=True).mask.astype(int)
+            masklist.append(mask)
+
+        return masklist
+
+
 
     @classmethod
     def from_file_moments(cls, filename, flux_ext=1, vel_ext=None, disp_ext=None):
         """
         Read the moments from a fits file and creates a Galaxy object.
+
+        TODO: implement!
+
+        Sometimes the moments are in different extensions, sometimes in different files
+
+        Also some cases the moments are binned so we need to be careful with binning again
+
+
 
 
         Parameters
