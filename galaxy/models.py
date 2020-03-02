@@ -349,7 +349,7 @@ class GalaxyBase:
         self.q = q
 
     @property
-    def flux(self):
+    def intensity(self):
         mod = Sersic2D(x_0=self.x_0,
                        y_0=self.y_0,
                        amplitude=self.amplitude,
@@ -361,6 +361,15 @@ class GalaxyBase:
 
     @property
     def velfield(self):
+        """
+        Velocity field according to the supplied parameters
+
+        Returns
+        -------
+
+        """
+
+
         if self.vmax > 0:
             mod = VelField(x_0=self.x_0,
                            y_0=self.y_0,
@@ -371,13 +380,21 @@ class GalaxyBase:
                            q=self.q)
             result = mod(self.x, self.y)
         else:
-            result =  np.ones(shape=self.x.shape)
+            result = np.ones(shape=self.x.shape)
 
         return result
 
 
     @property
-    def dispfield(self):
+    def dispmap(self):
+        """
+        Velocity dispersion map according to the supplied parameters
+
+        Returns
+        -------
+
+        """
+
         if self.sigma > 0:
             mod = DispersionField(x_0=self.x_0,
                                   y_0=self.y_0,
@@ -392,8 +409,9 @@ class GalaxyBase:
         return result
 
 
-    def rebin(self, ngrid=10):
+    def regrid(self, ngrid=10):
         """
+        Regrid the smooth velocity field to regions with similar velocity and  velocity dispersion
 
         Parameters
         ----------
@@ -405,13 +423,13 @@ class GalaxyBase:
         A numpy array with sectors numbered
         """
         velfield = self.velfield
-        dispfield = self.dispfield
+        dispfield = self.dispmap
 
         vel_grid = np.round((ngrid // 2) * velfield / np.max(velfield)) * np.max(velfield)
         sigma_grid = np.round((ngrid // 2) * dispfield / np.max(dispfield)) * np.max(dispfield)
         total_field = vel_grid + sigma_grid
         uniques = np.unique(total_field)
-        idx = np.arange(uniques.shape[0])
+        idx = np.arange(uniques.size)
 
         for v, i in zip(uniques, idx):
             total_field[total_field == v] = i+1
@@ -420,7 +438,7 @@ class GalaxyBase:
 
     def get_masks(self, ngrid=10):
 
-        grid = self.rebin(ngrid=ngrid)
+        grid = self.regrid(ngrid=ngrid)
         uniques = np.unique(grid)
         masklist = []
         for value in uniques:

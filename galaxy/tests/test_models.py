@@ -106,7 +106,7 @@ class TestGalaxy1D:
 class TestGalaxyBase:
 
 
-    def test_rebin(self):
+    def test_regrid(self):
 
         r_eff = 37  # effective radius
         n = 1  # sersic index
@@ -122,7 +122,7 @@ class TestGalaxyBase:
                             ellip=ellip, theta=theta,
                             vmax=vmax, sigma=sigma)
 
-        grid = galaxy.rebin(ngrid=10)
+        grid = galaxy.regrid(ngrid=10)
 
         print("LEVELS:", 15*"*", np.unique(grid))
         print("N_LEVELS:", 15*"*", np.unique(grid).shape)
@@ -131,7 +131,7 @@ class TestGalaxyBase:
         cbar.set_label('Dispersion', rotation=270, labelpad=25)
         plt.show()
 
-    def test_get_mask(self):
+    def test_get_masks(self):
         r_eff = 37  # effective radius
         n = 1  # sersic index
         ellip = 0.6  # ellipticity
@@ -146,7 +146,7 @@ class TestGalaxyBase:
                             ellip=ellip, theta=theta,
                             vmax=vmax, sigma=sigma)
 
-        masks = galaxy.get_masks(ngrid=100)
+        masks = galaxy.get_masks(ngrid=10)
         numbers = np.arange(len(masks))
         first = masks[0]*0
 
