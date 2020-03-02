@@ -131,8 +131,8 @@ def galaxysource3d(sed,           # The SED of the galaxy
                         ellip=ellip, theta=theta)
 
     img = galaxy.intensity
-    vel = galaxy.velfield
-    sigma = galaxy.dispmap
+    velfield = galaxy.velfield
+    dispmap = galaxy.dispmap
     masks = galaxy.get_masks(ngrid=ngrid)
 
     w, h = img.shape
@@ -148,9 +148,19 @@ def galaxysource3d(sed,           # The SED of the galaxy
     src = Source()
     src.fields = []
     src.spectra = []
-    for m in masks:
-        src.fields.append(m*img)
-        spectra = scaled_sp.redshift(vel=vmax)
-        src.spectra.append()
 
-    pass
+    hdu = fits.PrimaryHDU()
+    hdulist = fits.HDUList(hdu)
+    for m in masks:
+
+        data = m*img
+        hdulist.append(fits.PrimaryHDU(data=data, header=header))
+
+        vel = np.median(m*velfield)
+        sigma = np.median(m*dispmap)
+        spectra = scaled_sp.redshift(vel=vel)  # TODO: check if broadening is working as expected
+
+
+    src.fields = hdulist
+
+    return src
