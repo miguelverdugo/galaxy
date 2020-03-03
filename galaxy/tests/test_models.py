@@ -147,13 +147,14 @@ class TestGalaxyBase:
                             ellip=ellip, theta=theta,
                             vmax=vmax, sigma=sigma)
 
-        masks = galaxy.get_masks(ngrid=10)
+        masks = galaxy.get_masks(ngrid=100)
         numbers = np.arange(len(masks))
-        first = masks[0]*0
+        print(15*"*", len(masks))
+        first = masks[10]
 
-        for m, n in zip(masks, numbers):
-            print(n)
-            first = first + m * n
+#        for m, n in zip(masks, numbers):
+ #           print(n)
+  #          first = first + m * n
            # plt.imshow(m, origin="lower") #, cmap="tab20")
            # plt.show()
 

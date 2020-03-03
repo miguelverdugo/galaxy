@@ -422,8 +422,8 @@ class GalaxyBase:
         -------
         A numpy array with sectors numbered
         """
-        velfield = self.velfield
-        dispfield = self.dispmap
+        velfield = self.velfield.value
+        dispfield = self.dispmap.value
 
         vel_grid = np.round((ngrid // 2) * velfield / np.max(velfield)) * np.max(velfield)
         sigma_grid = np.round((ngrid // 2) * dispfield / np.max(dispfield)) * np.max(dispfield)

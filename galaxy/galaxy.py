@@ -22,13 +22,10 @@ def galaxy(sed,           # The SED of the galaxy
            extend=2):        # extend in units of r_eff
 
     """
-    Galaxy is created always at (x,y)=(0,0) so we don't need to create a huge image containing
-    the whole FoV
+    Creates a source object of a galaxy described by its Sersic index and other
+    parameters.
 
-    Image size depends on parameter extend (in units of r_eff) and
-    wavelength is limited by the passband with some padding so
-    don't create huge blocks
-
+    This function is ideal for imaging
 
     Parameters
     ----------
@@ -39,7 +36,7 @@ def galaxy(sed,           # The SED of the galaxy
 
     Returns
     -------
-
+    src : scopesim.Source
     """
     if isinstance(mag, u.Quantity) is False:
         mag = mag * u.ABmag
@@ -106,6 +103,43 @@ def galaxy3d(sed,           # The SED of the galaxy
              extend=2,        # extend in units of r_eff
              ngrid=10):       # griding parameter
 
+    """
+    Creates a source object of a galaxy described by its Sersic index and other
+    parameters. It also generates a velocity field (set by vmax) and
+    a velocity dispersion map (set by sigma).
+
+    The maps are binned according to the ngrid parameter, higher ngrid will create
+    finer binned fields but it may increase the computation time.
+
+    The ngrid parameter does not specify the number of bins. A ngrid=10 will create
+    around 40 independent regions whilst a ngrid of 100 will create around 2300 regions
+
+    This function is ideal for spectroscopy
+
+    Parameters
+    ----------
+    sed
+    z
+    mag
+    filter_name
+    plate_scale
+    r_eff
+    n
+    ellip
+    theta
+    vmax
+    sigma
+    extend
+    ngrid
+
+    Returns
+    -------
+
+    src : scopesim.Source
+    """
+
+
+
     if isinstance(mag, u.Quantity) is False:
         mag = mag * u.ABmag
     if isinstance(plate_scale, u.Quantity) is False:
@@ -134,7 +168,7 @@ def galaxy3d(sed,           # The SED of the galaxy
 
     galaxy = GalaxyBase(x=x, y=y, x_0=x_0, y_0=y_0,
                         r_eff=r_eff.value, amplitude=1, n=n,
-                        ellip=ellip, theta=theta)
+                        ellip=ellip, theta=theta, vmax=vmax, sigma=sigma)
 
     img = galaxy.intensity
     velfield = galaxy.velfield
@@ -160,18 +194,19 @@ def galaxy3d(sed,           # The SED of the galaxy
     src = Source()
     src.fields = []
     src.spectra = []
-
-
+    total_flux = np.sum(img.value)
+    #hdu = fits.PrimaryHDU()
     hdulist = []
-    for i, m in enumerate(masks) :
+    for i, m in enumerate(masks):
 
-        data = m*img.value
-
+        data = m * img.value
+        factor = np.sum(data) / total_flux
         header["SPEC_REF"] = i
 
         med_vel = np.median(m*velfield)
         med_sig = np.median(m*dispmap)
-        spec = scaled_sp.redshift(vel=med_vel)  # TODO: check if broadening is working as expected
+        # TODO: check in speXtra if broadening is working as expected
+        spec = scaled_sp.redshift(vel=med_vel) * factor
         hdu = fits.ImageHDU(data=data, header=header)
         hdulist.append(hdu)
         src.spectra.append(spec)
@@ -179,3 +214,5 @@ def galaxy3d(sed,           # The SED of the galaxy
     src.fields = fits.HDUList(hdulist)
 
     return src
+
+
