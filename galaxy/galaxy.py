@@ -65,20 +65,26 @@ def galaxy(sed,           # The SED of the galaxy
                         r_eff=r_eff.value, amplitude=1,  n=n,
                         ellip=ellip, theta=theta)
 
-    img = galaxy.intensity
+    img = galaxy.intensity.value
 
     w, h = img.shape
-    header = fits.Header({"CRPIX1": w // 2,
+    header = fits.Header({"NAXIS": 2,
+                          "NAXIS1": 2*x_0 + 1,
+                          "NAXIS2": 2*y_0 + 1,
+                          "CRPIX1": w // 2,
                           "CRPIX2": h // 2,
                           "CRVAL1": 0,
                           "CRVAL2": 0,
                           "CDELT1": plate_scale.to(u.deg).value,
                           "CDELT2": plate_scale.to(u.deg).value,
                           "CUNIT1": "DEG",
-                          "CUNIT2": "DEG"})
+                          "CUNIT2": "DEG",
+                          "CTYPE1": 'RA---TAN',
+                          "CTYPE2": 'DEC--TAN',
+                          "SPEC_REF": 0})
 
-    hdu = fits.PrimaryHDU(data=img, header=header)
-
+    hdu = fits.ImageHDU(data=img, header=header)
+    hdu.writeto("deleteme.fits", overwrite=True)
     src = Source()
     src.spectra = [scaled_sp]
     src.fields = [hdu]
@@ -136,31 +142,40 @@ def galaxy3d(sed,           # The SED of the galaxy
     masks = galaxy.get_masks(ngrid=ngrid)
 
     w, h = img.shape
-    header = fits.Header({"CRPIX1": w // 2,
+    header = fits.Header({"NAXIS": 2,
+                          "NAXIS1": 2 * x_0 + 1,
+                          "NAXIS2": 2 * y_0 + 1,
+                          "CRPIX1": w // 2,
                           "CRPIX2": h // 2,
                           "CRVAL1": 0,
                           "CRVAL2": 0,
                           "CDELT1": plate_scale.to(u.deg).value,
                           "CDELT2": plate_scale.to(u.deg).value,
                           "CUNIT1": "DEG",
-                          "CUNIT2": "DEG"})
+                          "CUNIT2": "DEG",
+                          "CTYPE1": 'RA---TAN',
+                          "CTYPE2": 'DEC--TAN',
+                          "SPEC_REF": 0})
 
     src = Source()
     src.fields = []
     src.spectra = []
 
-    hdu = fits.PrimaryHDU()
-    hdulist = fits.HDUList(hdu)
-    for m in masks:
 
-        data = m*img
-        hdulist.append(fits.PrimaryHDU(data=data, header=header))
+    hdulist = []
+    for i, m in enumerate(masks) :
 
-        vel = np.median(m*velfield)
-        sigma = np.median(m*dispmap)
-        spec = scaled_sp.redshift(vel=vel)  # TODO: check if broadening is working as expected
+        data = m*img.value
+
+        header["SPEC_REF"] = i
+
+        med_vel = np.median(m*velfield)
+        med_sig = np.median(m*dispmap)
+        spec = scaled_sp.redshift(vel=med_vel)  # TODO: check if broadening is working as expected
+        hdu = fits.ImageHDU(data=data, header=header)
+        hdulist.append(hdu)
         src.spectra.append(spec)
 
-    src.fields = hdulist
+    src.fields = fits.HDUList(hdulist)
 
     return src

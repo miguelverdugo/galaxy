@@ -429,9 +429,8 @@ class GalaxyBase:
         sigma_grid = np.round((ngrid // 2) * dispfield / np.max(dispfield)) * np.max(dispfield)
         total_field = vel_grid + sigma_grid
         uniques = np.unique(total_field)
-        idx = np.arange(uniques.size)
 
-        for v, i in zip(uniques, idx):
+        for i, v in enumerate(uniques):
             total_field[total_field == v] = i+1
 
         return total_field

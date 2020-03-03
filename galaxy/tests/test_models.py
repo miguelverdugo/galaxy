@@ -114,7 +114,7 @@ class TestGalaxyBase:
         ellip = 0.6  # ellipticity
         theta = 40  # position angle
 
-        vmax = 0
+        vmax = 100
         sigma = 100  # extend in units of r_eff
 
         x, y = np.meshgrid(np.arange(200), np.arange(200))
