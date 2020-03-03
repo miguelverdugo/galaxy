@@ -4,7 +4,7 @@ import inspect
 
 from . import models
 from .models import *
-from galaxy.galaxy import galaxysource
+from galaxy.galaxy import galaxy, galaxy3d
 
 
 __pkg_dir__ = os.path.dirname(inspect.getfile(inspect.currentframe()))

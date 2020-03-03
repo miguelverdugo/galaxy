@@ -1,6 +1,6 @@
 
 from galaxy.models import Sersic2D, VelField, DispersionField, GalaxyBase
-from galaxy import galaxysource
+from galaxy import galaxy, galaxy3d
 import numpy as np
 import matplotlib.pyplot as plt
 import pytest
@@ -9,6 +9,7 @@ from scopesim.source.source_templates import Source
 
 PLOTS = True
 
+# Testing the basic models
 class TestSersic:
 
     def test_simple(self, plot=PLOTS):
@@ -90,11 +91,11 @@ class TestGalaxy1D:
 
     def test_galaxy_creation(self):
 
-        gal = galaxysource(sed="kc96/s0", z=0)
+        gal = galaxy(sed="kc96/s0", z=0)
         assert isinstance(gal, Source)
 
     def test_plot_galaxy(self, plot=PLOTS):
-        gal = galaxysource(sed="kc96/s0", z=0)
+        gal = galaxy(sed="kc96/s0", z=0)
         data = gal.fields[0].data
         print(data)
         if plot is True:
@@ -113,7 +114,7 @@ class TestGalaxyBase:
         ellip = 0.6  # ellipticity
         theta = 40  # position angle
 
-        vmax = 100
+        vmax = 0
         sigma = 100  # extend in units of r_eff
 
         x, y = np.meshgrid(np.arange(200), np.arange(200))
@@ -162,6 +163,13 @@ class TestGalaxyBase:
 
         plt.show()
 
+
+class TestGalaxy3D:
+
+
+    def test_instance(self):
+        gal = galaxy3d(sed="kc96/s0", z=0)
+        assert isinstance(gal, Source)
 
 
 

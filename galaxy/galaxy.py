@@ -10,16 +10,16 @@ from scopesim.source.source_templates import Source
 from .models import GalaxyBase
 
 
-def galaxysource(sed,           # The SED of the galaxy
-                 z=0,             # redshift
-                 mag=15,           # magnitude
-                 filter_name="g",        # passband
-                 plate_scale=0.1,   # the plate scale "/pix
-                 r_eff=25,         # effective radius
-                 n=4,             # sersic index
-                 ellip=0.1,         # ellipticity
-                 theta=0,         # position angle
-                 extend=2):        # extend in units of r_eff
+def galaxy(sed,           # The SED of the galaxy
+           z=0,             # redshift
+           mag=15,           # magnitude
+           filter_name="g",        # passband
+           plate_scale=0.1,   # the plate scale "/pix
+           r_eff=25,         # effective radius
+           n=4,             # sersic index
+           ellip=0.1,         # ellipticity
+           theta=0,         # position angle
+           extend=2):        # extend in units of r_eff
 
     """
     Galaxy is created always at (x,y)=(0,0) so we don't need to create a huge image containing
@@ -86,19 +86,19 @@ def galaxysource(sed,           # The SED of the galaxy
     return src
 
 
-def galaxysource3d(sed,           # The SED of the galaxy
-                   z=0,             # redshift
-                   mag=15,           # magnitude
-                   filter_name="g",        # passband
-                   plate_scale=0.1,   # the plate scale "/pix
-                   r_eff=25,         # effective radius
-                   n=4,             # sersic index
-                   ellip=0.1,         # ellipticity
-                   theta=0,         # position angle
-                   vmax=100,
-                   sigma=100,
-                   extend=2,        # extend in units of r_eff
-                   ngrid=10):       # griding parameter
+def galaxy3d(sed,           # The SED of the galaxy
+             z=0,             # redshift
+             mag=15,           # magnitude
+             filter_name="g",        # passband
+             plate_scale=1,   # the plate scale "/pix
+             r_eff=25,         # effective radius
+             n=4,             # sersic index
+             ellip=0.1,         # ellipticity
+             theta=0,         # position angle
+             vmax=100,
+             sigma=100,
+             extend=2,        # extend in units of r_eff
+             ngrid=10):       # griding parameter
 
     if isinstance(mag, u.Quantity) is False:
         mag = mag * u.ABmag
@@ -108,7 +108,7 @@ def galaxysource3d(sed,           # The SED of the galaxy
         r_eff = r_eff * u.arcsec
     if isinstance(vmax, u.Quantity) is False:
         vmax = vmax*u.km/u.s
-    if isinstance(vmax, u.Quantity) is False:
+    if isinstance(sigma, u.Quantity) is False:
         sigma = sigma*u.km/u.s
 
     sp = Spextrum(sed).redshift(z=z)
@@ -158,8 +158,8 @@ def galaxysource3d(sed,           # The SED of the galaxy
 
         vel = np.median(m*velfield)
         sigma = np.median(m*dispmap)
-        spectra = scaled_sp.redshift(vel=vel)  # TODO: check if broadening is working as expected
-
+        spec = scaled_sp.redshift(vel=vel)  # TODO: check if broadening is working as expected
+        src.spectra.append(spec)
 
     src.fields = hdulist
 
