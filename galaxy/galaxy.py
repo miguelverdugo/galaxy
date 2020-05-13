@@ -138,8 +138,6 @@ def galaxy3d(sed,           # The SED of the galaxy
     src : scopesim.Source
     """
 
-
-
     if isinstance(mag, u.Quantity) is False:
         mag = mag * u.ABmag
     if isinstance(plate_scale, u.Quantity) is False:
@@ -170,12 +168,12 @@ def galaxy3d(sed,           # The SED of the galaxy
                         r_eff=r_eff.value, amplitude=1, n=n,
                         ellip=ellip, theta=theta, vmax=vmax, sigma=sigma)
 
-    img = galaxy.intensity
-    velfield = galaxy.velfield
-    dispmap = galaxy.dispmap
+    intensity = galaxy.intensity
+    velocity = galaxy.velocity
+    dispersion = galaxy.dispersion
     masks = galaxy.get_masks(ngrid=ngrid)
 
-    w, h = img.shape
+    w, h = intensity.shape
     header = fits.Header({"NAXIS": 2,
                           "NAXIS1": 2 * x_0 + 1,
                           "NAXIS2": 2 * y_0 + 1,
@@ -194,17 +192,17 @@ def galaxy3d(sed,           # The SED of the galaxy
     src = Source()
     src.fields = []
     src.spectra = []
-    total_flux = np.sum(img.value)
+    total_flux = np.sum(intensity.value)
     #hdu = fits.PrimaryHDU()
     hdulist = []
     for i, m in enumerate(masks):
 
-        data = m * img.value
+        data = m * intensity.value
         factor = np.sum(data) / total_flux
         header["SPEC_REF"] = i
 
-        med_vel = np.median(m*velfield)
-        med_sig = np.median(m*dispmap)
+        med_vel = np.median(m*velocity)
+        med_sig = np.median(m*dispersion)
         # TODO: check in speXtra if broadening is working as expected
         spec = scaled_sp.redshift(vel=med_vel) * factor
         hdu = fits.ImageHDU(data=data, header=header)

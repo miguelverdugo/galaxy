@@ -237,8 +237,8 @@ class DispersionField(Fittable2DModel):
 
     r"""
         Two dimensional Velocity Dispersion
-        At the moment just a gaussian distribution
-        TODO: Investigate the possible real distributions
+        At the moment just a 2D Gaussian distribution
+        TODO: Investigate the possible, easy to implement,  real distributions
 
         Parameters
         ----------
@@ -350,6 +350,13 @@ class GalaxyBase:
 
     @property
     def intensity(self):
+        """
+        2D light distribution following a Sersic2D profile
+
+        Returns
+        -------
+        numpy array
+        """
         mod = Sersic2D(x_0=self.x_0,
                        y_0=self.y_0,
                        amplitude=self.amplitude,
@@ -360,16 +367,14 @@ class GalaxyBase:
         return mod(self.x, self.y)
 
     @property
-    def velfield(self):
+    def velocity(self):
         """
         Velocity field according to the supplied parameters
 
         Returns
         -------
-
+        numpy array
         """
-
-
         if self.vmax > 0:
             mod = VelField(x_0=self.x_0,
                            y_0=self.y_0,
@@ -384,17 +389,15 @@ class GalaxyBase:
 
         return result
 
-
     @property
-    def dispmap(self):
+    def dispersion(self):
         """
         Velocity dispersion map according to the supplied parameters
 
         Returns
         -------
-
+        numpy array
         """
-
         if self.sigma > 0:
             mod = DispersionField(x_0=self.x_0,
                                   y_0=self.y_0,
@@ -407,7 +410,6 @@ class GalaxyBase:
             result = np.ones(shape=self.x.shape)
 
         return result
-
 
     def regrid(self, ngrid=10):
         """
@@ -422,8 +424,8 @@ class GalaxyBase:
         -------
         A numpy array with sectors numbered
         """
-        velfield = self.velfield.value
-        dispfield = self.dispmap.value
+        velfield = self.velocity.value
+        dispfield = self.dispersion.value
 
         vel_grid = np.round((ngrid // 2) * velfield / np.max(velfield)) * np.max(velfield)
         sigma_grid = np.round((ngrid // 2) * dispfield / np.max(dispfield)) * np.max(dispfield)
@@ -436,6 +438,17 @@ class GalaxyBase:
         return total_field
 
     def get_masks(self, ngrid=10):
+        """
+        Returns the regrided regions as a list of numpy masks
+
+        Parameters
+        ----------
+        ngrid: integer, griding factor
+
+        Returns
+        -------
+        list of masks
+        """
 
         grid = self.regrid(ngrid=ngrid)
         uniques = np.unique(grid)
@@ -446,14 +459,12 @@ class GalaxyBase:
 
         return masklist
 
-
-
     @classmethod
     def from_file_moments(cls, filename, flux_ext=1, vel_ext=None, disp_ext=None):
         """
         Read the moments from a fits file and creates a Galaxy object.
 
-        TODO: implement!
+        TODO: implement! Probably need a separate class
 
         Sometimes the moments are in different extensions, sometimes in different files
 

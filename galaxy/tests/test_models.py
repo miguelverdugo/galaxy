@@ -152,13 +152,13 @@ class TestGalaxyBase:
         print(15*"*", len(masks))
         first = masks[10]
 
-#        for m, n in zip(masks, numbers):
- #           print(n)
-  #          first = first + m * n
-           # plt.imshow(m, origin="lower") #, cmap="tab20")
+        for m, n in zip(masks, numbers):
+            print(n)
+            first = first + m * n
+            plt.imshow(m, origin="lower") #, cmap="tab20")
            # plt.show()
 
-        plt.imshow(first, origin="lower") #, vmin=0, vmax=4)
+        #plt.imshow(first, origin="lower") #, vmin=0, vmax=4)
         cbar = plt.colorbar()
         print(np.min(first), np.max(first))
 
