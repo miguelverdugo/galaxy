@@ -204,7 +204,7 @@ def galaxy3d(sed,           # The SED of the galaxy
         med_vel = np.median(m*velocity)
         med_sig = np.median(m*dispersion)
         # TODO: check in speXtra if broadening is working as expected
-        spec = scaled_sp.redshift(vel=med_vel) * factor
+        spec = scaled_sp.redshift(vel=med_vel).smooth(sigma=med_sig) * factor
         hdu = fits.ImageHDU(data=data, header=header)
         hdulist.append(hdu)
         src.spectra.append(spec)
