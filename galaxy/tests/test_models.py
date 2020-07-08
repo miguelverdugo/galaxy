@@ -72,7 +72,7 @@ class TestDispField:
                               ellip=.5, theta=30)
         img = mod(x, y)
 
-        max = np.max(img)
+        max = np.median(img)
         assert np.isclose(sigma, max)
 
         if plot is True:
@@ -101,7 +101,6 @@ class TestGalaxy1D:
         if plot is True:
             plt.imshow(np.log10(data), origin='lower', interpolation='nearest')
             plt.show()
-
 
 
 class TestGalaxyBase:

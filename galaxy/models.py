@@ -4,151 +4,16 @@ import numpy as np
 
 from astropy import units as u
 from astropy.units import Quantity, UnitsError
-from astropy.utils.decorators import deprecated
 from astropy.modeling.core import (Fittable1DModel, Fittable2DModel,
                                    ModelDefinitionError)
 
 from astropy.modeling.parameters import Parameter, InputParameterError
-from astropy.modeling.utils import ellipse_extent
 
+from astropy.modeling.models import Sersic2D
 
 TWOPI = 2 * np.pi
 FLOAT_EPSILON = float(np.finfo(np.float32).tiny)
 GAUSSIAN_SIGMA_TO_FWHM = 2.0 * np.sqrt(2.0 * np.log(2.0))
-
-# ----- Models copied from astropy.modeling.functional_models  -------------
-# ----- They are here for completeness and templating     ------------------
-class Sersic2D(Fittable2DModel):
-    r"""
-    Two dimensional Sersic surface brightness profile.
-
-    Parameters
-    ----------
-    amplitude : float
-        Surface brightness at r_eff.
-    r_eff : float
-        Effective (half-light) radius
-    n : float
-        Sersic Index.
-    x_0 : float, optional
-        x position of the center.
-    y_0 : float, optional
-        y position of the center.
-    ellip : float, optional
-        Ellipticity.
-    theta : float, optional
-        Rotation angle in radians, counterclockwise from
-        the positive x-axis.
-
-    See Also
-    --------
-    Gaussian2D, Moffat2D
-
-    Notes
-    -----
-    Model formula:
-
-    .. math::
-
-        I(x,y) = I(r) = I_e\exp\left\{-b_n\left[\left(\frac{r}{r_{e}}\right)^{(1/n)}-1\right]\right\}
-
-    The constant :math:`b_n` is defined such that :math:`r_e` contains half the total
-    luminosity, and can be solved for numerically.
-
-    .. math::
-
-        \Gamma(2n) = 2\gamma (b_n,2n)
-
-    Examples
-    --------
-    .. plot::
-        :include-source:
-
-        import numpy as np
-        from astropy.modeling.models import Sersic2D
-        import matplotlib.pyplot as plt
-
-        x,y = np.meshgrid(np.arange(100), np.arange(100))
-
-        mod = Sersic2D(amplitude = 1, r_eff = 25, n=4, x_0=50, y_0=50,
-                       ellip=.5, theta=-1)
-        img = mod(x, y)
-        log_img = np.log10(img)
-
-
-        plt.figure()
-        plt.imshow(log_img, origin='lower', interpolation='nearest',
-                   vmin=-1, vmax=2)
-        plt.xlabel('x')
-        plt.ylabel('y')
-        cbar = plt.colorbar()
-        cbar.set_label('Log Brightness', rotation=270, labelpad=25)
-        cbar.set_ticks([-1, 0, 1, 2], update_ticks=True)
-        plt.show()
-
-    References
-    ----------
-    .. [1] http://ned.ipac.caltech.edu/level5/March05/Graham/Graham2.html
-    """
-
-    amplitude = Parameter(default=1)
-    r_eff = Parameter(default=1)
-    n = Parameter(default=4)
-    x_0 = Parameter(default=0)
-    y_0 = Parameter(default=0)
-    ellip = Parameter(default=0)
-    theta = Parameter(default=0)
-    _gammaincinv = None
-
-    @classmethod
-    def evaluate(cls, x, y, amplitude, r_eff, n, x_0, y_0, ellip, theta):
-        """Two dimensional Sersic profile function."""
-
-        if isinstance(theta, u.Quantity) is False:
-            theta = theta * u.deg
-
-        theta = theta.to(u.rad)
-
-        if cls._gammaincinv is None:
-            try:
-                from scipy.special import gammaincinv
-                cls._gammaincinv = gammaincinv
-            except ValueError:
-                raise ImportError('Sersic2D model requires scipy > 0.11.')
-
-        bn = cls._gammaincinv(2. * n, 0.5)
-        a, b = r_eff, (1 - ellip) * r_eff
-        cos_theta, sin_theta = np.cos(theta), np.sin(theta)
-        x_maj = (x - x_0) * sin_theta + (y - y_0) * cos_theta
-        x_min = -(x - x_0) * cos_theta + (y - y_0) * sin_theta
-        z = np.sqrt((x_maj / a) ** 2 + (x_min / b) ** 2)
-
-        return amplitude * np.exp(-bn * (z ** (1 / n) - 1))
-
-
-    @property
-    def input_units(self):
-        if self.x_0.unit is None:
-            return None
-        else:
-            return {'x': self.x_0.unit,
-                    'y': self.y_0.unit}
-
-    def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
-        # Note that here we need to make sure that x and y are in the same
-        # units otherwise this can lead to issues since rotation is not well
-        # defined.
-        if inputs_unit['x'] != inputs_unit['y']:
-            raise UnitsError("Units of 'x' and 'y' inputs should match")
-        return {'x_0': inputs_unit['x'],
-                'y_0': inputs_unit['x'],
-                'r_eff': inputs_unit['x'],
-                'theta': u.rad,
-                'amplitude': outputs_unit['z']}
-
-# ------------------ END --------------------------------------------------------
-
-# ----- Copied from astromodels -----
 
 
 class VelField(Fittable2DModel):
@@ -192,7 +57,6 @@ class VelField(Fittable2DModel):
     def evaluate(x, y, vmax, r_eff,  ellip, theta, x_0, y_0, q):
         """
         Two dimensional velocity field, arctan approximation
-        TODO: Be consistent with Sersic2D
 
         """
         if isinstance(theta, u.Quantity) is False:
@@ -231,14 +95,21 @@ class VelField(Fittable2DModel):
                 'phi': u.deg,
                 'vrot': outputs_unit['z']}
 
-#------  End -----
 
 class DispersionField(Fittable2DModel):
 
     r"""
         Two dimensional Velocity Dispersion
-        At the moment just a 2D Gaussian distribution
-        TODO: Investigate the possible, easy to implement,  real distributions
+        This follows a broken power law as in Veale et al. 2017
+
+        .. math:: \sigma(R)=\sigma_0 2^{\gamma_1-\gamma_2} (\frac{R}{R_b})^{\gamma_1}(1+\frac{R}{R_b}^{\gamma_2-\gamma_1}
+
+        where
+        :math:`\sigma_0` is the velocity dispersion
+        :math:`\gamma_1`  and math:`\gamma_2` are the inner and outer power slopes. Set to -0.04 and -0.42 as
+        default values
+        :math:`R_b` is the break radius, set to :math:`R_b = R_{eff}` for simplicity
+
 
         Parameters
         ----------
@@ -251,13 +122,20 @@ class DispersionField(Fittable2DModel):
         sigma : float, u.Quantity
             velocity dispersion
 
-        r_d : float
+        r_eff : float
             scale length of galaxy (assumed to be turnover radius) it will be used as sigma
 
         x0 : float, optional
             x position of the center.
         y0 : float, optional
             y position of the center.
+
+        e_in : float, optional
+            inner power law slope
+
+        e_out : float, optional
+            outer power law slope
+
         """
    # incl = Parameter(default=45)
     ellip = Parameter(default=0)
@@ -266,48 +144,30 @@ class DispersionField(Fittable2DModel):
     r_eff = Parameter(default=1)
     x_0 = Parameter(default=0)
     y_0 = Parameter(default=0)
-
+    e_in = Parameter(default=-0.04)
+    e_out = Parameter(default=-0.42)
 
     @staticmethod
-    def evaluate(x, y, ellip, theta, sigma, r_eff, x_0, y_0):
+    def evaluate(x, y, ellip, theta, sigma, r_eff, x_0, y_0, e_in, e_out):
         """
-        TODO: Be consistent with Sersic2D
+        evaluation
 
         """
-     #   if isinstance(incl, u.Quantity) is False:
-     #       incl = incl * u.deg
+
         if isinstance(theta, u.Quantity) is False:
             theta = theta * u.deg
 
-        """Two dimensional Gaussian function"""
         theta = theta.to(u.rad)
-    #    incl = incl.to(u.rad)
-
-        # get ellipticity from inclination
-       # ellip = 1 - np.sqrt((1 - q ** 2) * np.cos(incl) ** 2 + q ** 2)
 
         a, b = r_eff, (1 - ellip) * r_eff
         cos_theta, sin_theta = np.cos(theta), np.sin(theta)
         x_maj = (x - x_0) * sin_theta + (y - y_0) * cos_theta
         x_min = -(x - x_0) * cos_theta + (y - y_0) * sin_theta
         z = np.sqrt((x_maj / a) ** 2 + (x_min / b) ** 2)
-        result = sigma * np.exp(-z**2)
+        result = sigma * 2**(e_in - e_out) * z**e_in * (1 + z)**(e_out - e_in)
+
         return result
 
-        #  x_stddev = x_maj
-        #  y_stddev = x_min
-        #  cost2 = np.cos(theta) ** 2
-        #  sint2 = np.sin(theta) ** 2
-        #  sin2t = np.sin(2. * theta)
-        #  xstd2 = x_stddev ** 2
-        #  ystd2 = y_stddev ** 2
-        #   xdiff = x - x_0
-        #   ydiff = y - y_0
-        #   a = 0.5 * ((cost2 / xstd2) + (sint2 / ystd2))
-        #   b = 0.5 * ((sin2t / xstd2) - (sin2t / ystd2))
-        #   c = 0.5 * ((sint2 / xstd2) + (cost2 / ystd2))
-
-        #  return sigma * np.exp(-((a * xdiff ** 2) + (b * xdiff * ydiff) + (c * ydiff ** 2)))
 
 
     @property
@@ -332,8 +192,16 @@ class DispersionField(Fittable2DModel):
 
 
 class GalaxyBase:
+    """
+    Class to define a galaxy. It takes a set of parameters and creates the
+    different moments for
 
-    def __init__(self, x, y, x_0, y_0, amplitude, r_eff, ellip, theta, n=4, vmax=0, sigma=0, q=0.2):
+    """
+
+
+    def __init__(self, x, y, x_0, y_0,
+                 amplitude, r_eff, ellip, theta, n=4,
+                 vmax=0, sigma=0, q=0.2):
 
         self.x = x
         self.y = y
@@ -413,12 +281,12 @@ class GalaxyBase:
 
     def regrid(self, ngrid=10):
         """
-        Regrid the smooth velocity field to regions with similar velocity and  velocity dispersion
+        Regrid the smooth velocity field to regions with similar
+        velocity and velocity dispersion
 
         Parameters
         ----------
         ngrid: integer
-
 
         Returns
         -------
@@ -458,34 +326,6 @@ class GalaxyBase:
             masklist.append(mask)
 
         return masklist
-
-    @classmethod
-    def from_file_moments(cls, filename, flux_ext=1, vel_ext=None, disp_ext=None):
-        """
-        Read the moments from a fits file and creates a Galaxy object.
-
-        TODO: implement! Probably need a separate class
-
-        Sometimes the moments are in different extensions, sometimes in different files
-
-        Also some cases the moments are binned so we need to be careful with binning again
-
-
-
-
-        Parameters
-        ----------
-        filename
-        flux_ext
-        vel_ext
-        disp_ext
-
-        Returns
-        -------
-
-        """
-
-        pass
 
 
 
