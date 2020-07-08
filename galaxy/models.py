@@ -144,8 +144,8 @@ class DispersionField(Fittable2DModel):
     r_eff = Parameter(default=1)
     x_0 = Parameter(default=0)
     y_0 = Parameter(default=0)
-    e_in = Parameter(default=-0.04)
-    e_out = Parameter(default=-0.42)
+    e_in = Parameter(default=-0.0)
+    e_out = Parameter(default=-0.5)
 
     @staticmethod
     def evaluate(x, y, ellip, theta, sigma, r_eff, x_0, y_0, e_in, e_out):
@@ -161,8 +161,8 @@ class DispersionField(Fittable2DModel):
 
         a, b = r_eff, (1 - ellip) * r_eff
         cos_theta, sin_theta = np.cos(theta), np.sin(theta)
-        x_maj = (x - x_0) * sin_theta + (y - y_0) * cos_theta
-        x_min = -(x - x_0) * cos_theta + (y - y_0) * sin_theta
+        x_maj = (x - x_0) * sin_theta + (y - y_0) * cos_theta + 0.1
+        x_min = -(x - x_0) * cos_theta + (y - y_0) * sin_theta + 0.1  # to avoid inf values
         z = np.sqrt((x_maj / a) ** 2 + (x_min / b) ** 2)
         result = sigma * 2**(e_in - e_out) * z**e_in * (1 + z)**(e_out - e_in)
 
@@ -201,7 +201,8 @@ class GalaxyBase:
 
     def __init__(self, x, y, x_0, y_0,
                  amplitude, r_eff, ellip, theta, n=4,
-                 vmax=0, sigma=0, q=0.2):
+                 vmax=0, sigma=0, q=0.2,
+                 e_in=-0.04, e_out=-0.42):
 
         self.x = x
         self.y = y
@@ -215,6 +216,8 @@ class GalaxyBase:
         self.vmax = vmax
         self.sigma = sigma
         self.q = q
+        self.e_in = e_in
+        self.e_out = e_out
 
     @property
     def intensity(self):
@@ -272,7 +275,9 @@ class GalaxyBase:
                                   r_eff=self.r_eff,
                                   ellip=self.ellip,
                                   theta=self.theta,
-                                  sigma=self.sigma)
+                                  sigma=self.sigma,
+                                  e_in=self.e_in,
+                                  e_out=self.e_out)
             result = mod(self.x, self.y)
         else:
             result = np.ones(shape=self.x.shape)
@@ -296,7 +301,7 @@ class GalaxyBase:
         dispfield = self.dispersion.value
 
         vel_grid = np.round((ngrid // 2) * velfield / np.max(velfield)) * np.max(velfield)
-        sigma_grid = np.round((ngrid // 2) * dispfield / np.max(dispfield)) * np.max(dispfield)
+        sigma_grid = np.round((ngrid // 2 + 2) * dispfield / np.max(dispfield)) * np.max(dispfield)
         total_field = vel_grid + sigma_grid
         uniques = np.unique(total_field)
 
