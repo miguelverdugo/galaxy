@@ -80,7 +80,7 @@ def galaxy(sed,           # The SED of the galaxy
                         r_eff=r_eff.value, amplitude=1,  n=n,
                         ellip=ellip, theta=theta)
 
-    img = galaxy.intensity.value
+    img = galaxy.intensity
 
     w, h = img.shape
     header = fits.Header({"NAXIS": 2,
@@ -111,8 +111,8 @@ def galaxy3d(sed,           # The SED of the galaxy,
              z=0,             # redshift
              mag=15,           # magnitude
              filter_name="g",        # passband
-             plate_scale=1,   # the plate scale "/pix
-             r_eff=25,         # effective radius
+             plate_scale=0.2,   # the plate scale "/pix
+             r_eff=10,         # effective radius
              n=4,             # sersic index
              ellip=0.1,         # ellipticity
              theta=0,         # position angle
@@ -185,7 +185,7 @@ def galaxy3d(sed,           # The SED of the galaxy,
     if isinstance(sed, str):
         sp = Spextrum(sed).redshift(z=z)
         scaled_sp = sp.scale_to_magnitude(amplitude=mag, filter_name=filter_name)
-    elif isinstance(sed, (Spextrum)):
+    elif isinstance(sed, Spextrum):
         scaled_sp = sed
 
     r_eff = r_eff.to(u.arcsec)
@@ -194,6 +194,7 @@ def galaxy3d(sed,           # The SED of the galaxy,
     sigma = sigma.to(u.km/u.s)
 
     image_size = 2 * (r_eff.value * extend / plate_scale.value)  # TODO: Needs unit check
+    print(image_size, r_eff)
     x_0 = image_size // 2
     y_0 = image_size // 2
 
@@ -201,14 +202,14 @@ def galaxy3d(sed,           # The SED of the galaxy,
                        np.arange(image_size))
 
     galaxy = GalaxyBase(x=x, y=y, x_0=x_0, y_0=y_0,
-                        r_eff=r_eff.value, amplitude=1, n=n,
+                        r_eff=r_eff.value/plate_scale.value,
+                        amplitude=1, n=n,
                         ellip=ellip, theta=theta, vmax=vmax, sigma=sigma)
 
     intensity = galaxy.intensity
-    velocity = galaxy.velocity
-    dispersion = galaxy.dispersion
+    velocity = galaxy.velocity.value
+    dispersion = galaxy.dispersion.value
     masks = galaxy.get_masks(ngrid=ngrid)
-
     w, h = intensity.shape
     header = fits.Header({"NAXIS": 2,
                           "NAXIS1": 2 * x_0 + 1,
@@ -228,18 +229,22 @@ def galaxy3d(sed,           # The SED of the galaxy,
     src = Source()
     src.fields = []
     src.spectra = []
-    total_flux = np.sum(intensity.value)
-    #hdu = fits.PrimaryHDU()
+    total_flux = np.sum(intensity)
+
     hdulist = []
+
     for i, m in enumerate(masks):
-
-        data = m * intensity.value
+        data = m * intensity
         factor = np.sum(data) / total_flux
-        header["SPEC_REF"] = i
 
-        med_vel = np.median(m*velocity)
-        med_sig = np.median(m*dispersion)
+        masked_vel = np.ma.array(velocity, mask=m == 0)
+        masked_sigma = np.ma.array(dispersion, mask=m == 0)
+        med_vel = np.ma.median(masked_vel)
+        med_sig = np.ma.median(masked_sigma)
+
         spec = scaled_sp.redshift(vel=med_vel).smooth(sigma=med_sig) * factor
+
+        header["SPEC_REF"] = i
         hdu = fits.ImageHDU(data=data, header=header)
         hdulist.append(hdu)
         src.spectra.append(spec)
