@@ -15,7 +15,7 @@ def galaxy(sed,           # The SED of the galaxy
            mag=15,           # magnitude
            filter_name="g",        # passband
            plate_scale=0.1,   # the plate scale "/pix
-           r_eff=25,         # effective radius
+           r_eff=2.5,         # effective radius
            n=4,             # sersic index
            ellip=0.1,         # ellipticity
            theta=0,         # position angle
@@ -29,10 +29,26 @@ def galaxy(sed,           # The SED of the galaxy
 
     Parameters
     ----------
-    sed
-    z
-    r_eff
-    n
+    sed : str or Spextrum
+    z : float
+        redshift of the galaxy
+    r_eff : float
+        effective radius of the galaxy in arcsec, it accepts astropy.units
+    mag : float
+        magnitude of the galaxy, it accepts astropy.units
+    filter_name : str
+        name of the filter where the magnitude refer to
+    plate_scale : float
+        the scale in arcsec/pixel of the instrument
+    n : float
+        Sersic index of the galaxy
+    ellip : float
+        ellipticity of the galaxy
+    theta : float
+        position angle of the galaxy
+    extend : float
+        Size of the image in units of r_eff
+
 
     Returns
     -------
@@ -44,9 +60,11 @@ def galaxy(sed,           # The SED of the galaxy
         plate_scale = plate_scale * u.arcsec
     if isinstance(r_eff, u.Quantity) is False:
         r_eff = r_eff * u.arcsec
-
-    sp = Spextrum(sed).redshift(z=z)
-    scaled_sp = sp.scale_to_magnitude(amplitude=mag, filter_name=filter_name)
+    if isinstance(sed, str):
+        sp = Spextrum(sed).redshift(z=z)
+        scaled_sp = sp.scale_to_magnitude(amplitude=mag, filter_name=filter_name)
+    elif isinstance(sed, (Spextrum)):
+        scaled_sp = sed
 
     r_eff = r_eff.to(u.arcsec)
     plate_scale = plate_scale.to(u.arcsec)
@@ -89,7 +107,7 @@ def galaxy(sed,           # The SED of the galaxy
     return src
 
 
-def galaxy3d(sed,           # The SED of the galaxy
+def galaxy3d(sed,           # The SED of the galaxy,
              z=0,             # redshift
              mag=15,           # magnitude
              filter_name="g",        # passband
@@ -118,19 +136,35 @@ def galaxy3d(sed,           # The SED of the galaxy
 
     Parameters
     ----------
-    sed
-    z
-    mag
-    filter_name
-    plate_scale
-    r_eff
-    n
-    ellip
-    theta
-    vmax
-    sigma
-    extend
-    ngrid
+    sed : str or Spextrum
+        SED of the galaxy, it can be a string or a Spextrum object, in the later case it won't
+        be re-escaled.
+    z : float
+        redshift of the galaxy
+    mag : float
+        magnitude of the galaxy. The spectrum will be re-escaled to this magnitude
+    filter_name : str
+        name of the filter where the magnitude is measured
+    plate_scale : float
+        the scale of the image in arcsec/pixel
+    r_eff : float
+        effective radius of the galaxy in arcsec. It accepts astropy.units
+    n : float
+        Sersic index of the galaxy
+    ellip : float
+        ellipticity of the galaxy
+    theta : float
+        position angle of the galaxy
+    vmax : float
+        maximum rotation velocity of the galaxy
+    sigma : float
+        velocity dispersion of the galaxy
+
+    extend : float
+        Size of the image in units of r_eff
+
+    ngrid : int
+        gridding parameter for creating of the galaxy
 
     Returns
     -------
@@ -148,9 +182,11 @@ def galaxy3d(sed,           # The SED of the galaxy
         vmax = vmax*u.km/u.s
     if isinstance(sigma, u.Quantity) is False:
         sigma = sigma*u.km/u.s
-
-    sp = Spextrum(sed).redshift(z=z)
-    scaled_sp = sp.scale_to_magnitude(amplitude=mag, filter_name=filter_name)
+    if isinstance(sed, str):
+        sp = Spextrum(sed).redshift(z=z)
+        scaled_sp = sp.scale_to_magnitude(amplitude=mag, filter_name=filter_name)
+    elif isinstance(sed, (Spextrum)):
+        scaled_sp = sed
 
     r_eff = r_eff.to(u.arcsec)
     plate_scale = plate_scale.to(u.arcsec)
@@ -203,7 +239,6 @@ def galaxy3d(sed,           # The SED of the galaxy
 
         med_vel = np.median(m*velocity)
         med_sig = np.median(m*dispersion)
-        # TODO: check in speXtra if broadening is working as expected
         spec = scaled_sp.redshift(vel=med_vel).smooth(sigma=med_sig) * factor
         hdu = fits.ImageHDU(data=data, header=header)
         hdulist.append(hdu)
