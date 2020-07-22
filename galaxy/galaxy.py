@@ -254,3 +254,92 @@ def galaxy3d(sed,           # The SED of the galaxy,
     return src
 
 
+def data_cube(sed,      # The SED of the galaxy,
+              z=0,             # redshift
+              mag=15,           # magnitude
+              filter_name="g",        # passband
+              wmin=None,
+              wmax=None,
+              plate_scale=0.2,   # the plate scale "/pix
+              r_eff=10,         # effective radius
+              n=4,             # sersic index
+              ellip=0.1,         # ellipticity
+              theta=0,         # position angle
+              vmax=100,
+              sigma=100,
+              extend=2):        # extend in units of r_eff):
+    """
+    Creates a datacube for a galaxy
+
+    """
+    if isinstance(mag, u.Quantity) is False:
+        mag = mag * u.ABmag
+    if isinstance(plate_scale, u.Quantity) is False:
+        plate_scale = plate_scale * u.arcsec
+    if isinstance(r_eff, u.Quantity) is False:
+        r_eff = r_eff * u.arcsec
+    if isinstance(vmax, u.Quantity) is False:
+        vmax = vmax*u.km/u.s
+    if isinstance(sigma, u.Quantity) is False:
+        sigma = sigma*u.km/u.s
+    if isinstance(sed, str):
+        sp = Spextrum(sed).redshift(z=z)
+        scaled_sp = sp.scale_to_magnitude(amplitude=mag, filter_name=filter_name)
+    elif isinstance(sed, Spextrum):
+        scaled_sp = sed
+
+    if wmin is None:
+        wmin = np.min(scaled_sp.waveset)
+    elif isinstance(wmin, u.Quantity) is False:
+        wmin = wmin * u.AA
+    else:
+        wmin = wmin.to(u.AA)
+
+    if wmax is None:
+        wmax = np.max(scaled_sp.waveset)
+    elif isinstance(wmax, u.Quantity) is False:
+        wmax = wmax * u.AA
+    else:
+        wmax = wmax.to(u.AA)
+
+    scaled_sp = scaled_sp[(scaled_sp.waveset > wmin) & (scaled_sp.waveset < wmax)]
+    image_size = 2 * (r_eff.value * extend / plate_scale.value)  # TODO: Needs unit check
+    x_0 = image_size // 2
+    y_0 = image_size // 2
+
+    x, y = np.meshgrid(np.arange(image_size),
+                       np.arange(image_size))
+    gal = GalaxyBase(x=x, y=y, x_0=x_0, y_0=y_0,
+                        r_eff=r_eff.value / plate_scale.value,
+                        amplitude=1, n=n,
+                        ellip=ellip, theta=theta, vmax=vmax, sigma=sigma)
+
+    intensity = gal.intensity
+    velocity = gal.velocity.value
+    dispersion = gal.dispersion.value
+    w, h = intensity.shape
+    length = scaled_sp.waveset.shape
+    header = fits.Header({"NAXIS": 3,
+                          "NAXIS1": 2 * x_0 + 1,
+                          "NAXIS2": 2 * y_0 + 1,
+                          "NAXIS3": length,
+                          "CRPIX1": w // 2,
+                          "CRPIX2": h // 2,
+                          "CRPIX3": 1.0,
+                          "CRVAL1": 0,
+                          "CRVAL2": 0,
+                          "CRVAL3": np.min(scaled_sp.waveset),
+                          "CDELT1": -1 * plate_scale.to(u.deg).value,
+                          "CDELT2": plate_scale.to(u.deg).value,
+                          "CUNIT1": "DEG",
+                          "CUNIT2": "DEG",
+                          "CUNIT3": "Angstrom",
+                          "CTYPE1": 'RA---TAN',
+                          "CTYPE2": 'DEC--TAN',
+                          "CTYPE3": "AWAV",
+                          "SPEC_REF": 0})
+
+    for i in range(image_size):
+        for j in range(image_size):
+            sp = scaled_sp.redshift(vel=velocity[i, j]).smooth(sigma=dispersion[i, j]) * intensity[i, j]
+
